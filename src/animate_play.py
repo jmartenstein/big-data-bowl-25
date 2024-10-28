@@ -49,8 +49,8 @@ except:
 # 2022092503, 2132
 # 2022091106, 442 
 # 2022091200,109
-# 2022091113, 3853
-# 2022103003, 612
+# 2022091113, 3853; TB at DAL
+# 2022103003, 612; MIA at DET
 
 # team colors to distinguish between players on plots
 colors = {
@@ -129,8 +129,6 @@ down = df_focused.down.values[0]
 quarter = df_focused.quarter.values[0]
 gameClock = df_focused.gameClock.values[0]
 playDescription = df_focused.playDescription.values[0]
-#ballcarrierId = df_focused.ballCarrierId.values[0]
-ballcarrierId = 0
 tackle_frame_id = -1
 
 # Handle case where we have a really long Play Description and want to split it into two lines
@@ -264,53 +262,56 @@ for frameId in sorted_frame_list:
             hoverinfo="none",
         )
     )
+
     # Plot Players
-    for club in df_focused.club.unique():
-        plot_df = df_focused[
-            (df_focused.club == club) & (df_focused.frameId == frameId)
-        ].copy()
-        if club != "football":
-            hover_text_array = []
-            for nflId in plot_df.nflId:
+    plot_df = df_focused[
+        (df_focused.frameId == frameId)
+    ].copy()
 
-                selected_player_df = plot_df[plot_df.nflId == nflId]
-                p_id = int(selected_player_df['nflId'].values[0])
-                p_name = selected_player_df['displayName'].values[0]
-                p_speed = selected_player_df['s'].values[0]
-                p_dir = int(selected_player_df['dir'].values[0])
-                p_o = int(selected_player_df['o'].values[0])
+    hover_text_array = []
+    player_color_array = []
 
-                hover_text_array.append(
-                    f"id: {str(p_id)}<br>" + \
-                    f"name: {p_name}<br>" + \
-                    f"spd: {p_speed} yd/sec<br>" + \
-                    f"dir: {str(p_dir)} degrees<br>" + \
-                    f"dir-o: {str(p_dir-p_o)} degrees"
-                )
-            data.append(
-                go.Scatter(
-                    x=plot_df["x"],
-                    y=plot_df["y"],
-                    mode="markers",
-                    marker_color=colors[club],
-                    marker_size=10,
-                    name=club,
-                    hovertext=hover_text_array,
-                    hoverinfo="text",
-                )
+    # because football doesn't have an nflId, we're going to insert one
+    # we assume each frame only has a single football
+    football_idx = plot_df.index[plot_df['club']=='football'].values[0]
+    plot_df.at[football_idx, 'nflId'] = 0
+
+    p_dir = 0
+
+    for nflId in plot_df.nflId:
+
+        selected_player_df = plot_df[plot_df.nflId == nflId]
+
+        p_id = int(selected_player_df['nflId'].values[0])
+        p_name = selected_player_df['displayName'].values[0]
+        p_speed = selected_player_df['s'].values[0]
+        #if not selected_player_df['dir'].values[0].isnull():
+        #    p_dir = int(selected_player_df['dir'].values[0])
+        #p_o = int(selected_player_df['o'].values[0])
+
+        hover_text_array.append(
+            f"id: {str(p_id)}<br>" + \
+            f"name: {p_name}<br>" + \
+            f"spd: {p_speed} yd/sec<br>"
+            #f"dir: {str(p_dir)} degrees<br>" + \
+            #f"dir-o: {str(p_dir-p_o)} degrees"
+        )
+
+        color = colors[selected_player_df['club'].values[0]]
+        player_color_array.append(color)
+
+    data.append(
+        go.Scatter(
+            x=plot_df["x"],
+            y=plot_df["y"],
+            mode="markers",
+            marker_color=player_color_array,
+            marker_size=10,
+            name=str(frameId),
+            hovertext=hover_text_array,
+                hoverinfo="text",
             )
-        else:
-            data.append(
-                go.Scatter(
-                    x=plot_df["x"],
-                    y=plot_df["y"],
-                    mode="markers",
-                    marker_color=colors[club],
-                    marker_size=10,
-                    name=club,
-                    hoverinfo="none",
-                )
-            )
+        )
 
     # add frame to slider
     slider_step = {
