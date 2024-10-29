@@ -52,7 +52,7 @@ print(df_motion.shape)
 #print(df_motion.sort_values("o"))
 #sys.exit(0)
 
-gmm = GaussianMixture(n_components=64,verbose=2).fit(df_motion)
+gmm = GaussianMixture(n_components=48,verbose=2).fit(df_motion)
 all_labels = gmm.predict(df_motion)
 print(all_labels.shape)
 print()
