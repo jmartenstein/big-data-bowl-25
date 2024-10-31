@@ -20,6 +20,50 @@ def get_players_in_cluster(df, idx):
     ]
     return indexed_players["displayName"].unique()
 
+def analyze_clusters_in_space(df, players, start_frame, end_frame):
+
+    space_df = df[
+        (df["displayName"].isin(players)) & \
+        (df["frameId"].isin(range(start_frame,end_frame)))
+    ]
+
+    total_points = (end_frame - start_frame) * len(players)
+    print(f"Analyzing players {players} across frame range: {start_frame} - {end_frame} ({total_points} total)")
+    bins = np.bincount(space_df['labels'])
+    count_bool_mask = (bins > 0)
+    print(f"{sum(count_bool_mask)} total clusters found in space")
+    #print(percentage_array)
+
+    cluster_pct_threshhold = 50
+
+    super_cluster_list = []
+    super_cluster_count = 0
+
+    for i in range(len(bins)):
+        if bins[i] > 0:
+            cluster_df = df[df["labels"] == i]
+            percentage = round((bins[i] / len(cluster_df) * 100),2)
+            #print(f"Cluster {i} has {bins[i]} of {len(cluster_df)} points in cluster ({percentage}%)")
+            if percentage > cluster_pct_threshhold:
+                super_cluster_list.append(i)
+                super_cluster_count += bins[i]
+    #print()
+
+    print(f"{len(super_cluster_list)} clusters found above {cluster_pct_threshhold} threshhold")
+    super_cluster_pct = round((super_cluster_count / len(space_df)) * 100)
+    print(f"Total of {super_cluster_count} points out of {len(space_df)} ({super_cluster_pct}%)")
+    print(f"Clusters: {super_cluster_list}")
+
+    print()
+
+    # Validation 1a: what players are ALSO in the max_idx cluster (besides THill and JJones)?
+    idx_max = np.argmax(bins)
+    players = get_players_in_cluster(player_pos_df, idx_max)
+    #print(f"Players in cluster {idx_max}: {players}")
+    #print(f"Largest cluster {idx_max} has {bins[idx_max]} points in the space")
+    #print()
+
+
 ### GLOBALS
 
 game_id = 2022091106
@@ -38,21 +82,22 @@ df_focused = df_tracking[
     (df_tracking["gameId"] == game_id)
 ]
 
+# Note: Correlate playerId's for gaussian mixture?
+
 ### SET UP DATAFRAMES
 
 df_focused = df_focused[df_focused["club"] != "football"]
 df_pos = df_focused[["frameId", "nflId", "displayName", "x", "y"]]
 df_motion = df_focused[["frameId", "y", "s","o"]]
-#df_motion_only = df_focused[["x","y","dir"]]
 
 #df_motion_only, y_true = make_blobs(n_samples=400, centers=4, cluster_std=0.60, random_state=0)
 #X = X[:, ::-1] # flip axes for better plotting
 
-print(df_motion.shape)
+#print(df_motion.shape)
 #print(df_motion.sort_values("o"))
 #sys.exit(0)
 
-gmm = GaussianMixture(n_components=48,verbose=2).fit(df_motion)
+gmm = GaussianMixture(n_components=150,verbose=2).fit(df_motion)
 all_labels = gmm.predict(df_motion)
 print(all_labels.shape)
 print()
@@ -63,24 +108,13 @@ player_pos_df["labels"] = all_labels
 # validation 1: what percentage of cells with both THill and JJones are one
 # single cluster?
 print("### Validation 1 ###")
-man_coverage_frames = player_pos_df[
-    (player_pos_df["displayName"].isin(["Tyreek Hill", "Jonathan Jones"])) & \
-    (player_pos_df["frameId"].isin(range(94,154)))
-]
 
-bins = np.bincount(man_coverage_frames['labels'])
-idx_max = np.argmax(bins)
-print(f"Cluster {idx_max} has {bins[idx_max]} player/frame matches out of {len(man_coverage_frames['labels'])} total")
-median_bool_mask = (man_coverage_frames['labels'] == idx_max)
-probability = median_bool_mask.sum() / len(median_bool_mask)
-print(f"prob:    {probability}")
+analyze_clusters_in_space(player_pos_df, ["Tyreek Hill", "Jonathan Jones"], 94, 154)
+analyze_clusters_in_space(player_pos_df, ["Tyreek Hill", "Jalen Mills", "Jonathan Jones", "Jaylen Waddle"], 137, 153)
 
-# Validation 1a: what players are ALSO in the max_idx cluster (besides THill and JJones)?
-players = get_players_in_cluster(player_pos_df, idx_max)
-print(f"Cluster {idx_max}: {players}")
-print()
+#sys.exit(0)
 
-# validation 2: what clusters have ONLY the following players
+# validation 2: what clusters include the following players
 # Tyreek Hill, Jaylen Waddle, Jonathan Jones, Jalen Mills
 print("### Validation 2 ###")
 player_names = ["Tyreek Hill", "Jalen Mills", "Jonathan Jones", "Jaylen Waddle"]
@@ -98,11 +132,11 @@ print(f"Intersections with all players: {intersection_set}")
 for i in intersection_set:
 
     players = get_players_in_cluster(player_pos_df, i)
-    print(f"Cluster {i}: {players}")
-
     label_cluster_contents = player_pos_df[player_pos_df["labels"] == i]
     sorted_by_frames = label_cluster_contents.sort_values(by=['frameId'])
-    print(sorted_by_frames)
-    print(sorted_by_frames.shape)
+    print(f"Cluster {i}: {players}; Size: {sorted_by_frames.shape}")
+
+    #print(sorted_by_frames)
+    #print(f"Size: {sorted_by_frames.shape}")
 
 
