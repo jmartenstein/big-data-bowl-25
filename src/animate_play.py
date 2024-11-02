@@ -43,15 +43,14 @@ except:
     print("Invalid play id format")
     sys.exit(1)
 
-#print(game_id + " " + play_id)
-
 # Test cases:
-# 2022092503, 2132
+
+# 2022092503,2132
 # 2022091113,1363; TB at DAL; interception
-# 2022091113, 3853; TB at DAL
-# 2022091106, 442 
-# 2022091200,109
-# 2022103003, 612; MIA at DET
+# 2022091113,3853; TB at DAL
+# 2022091106,442;  MIA at NE
+# 2022091200,109;  DEN at SEA
+# 2022103003,612;  MIA at DET
 
 # team colors to distinguish between players on plots
 colors = {
