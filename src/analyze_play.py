@@ -76,7 +76,10 @@ def get_closest_defender(df, player_name):
 
     return [min_player, min_distance]
 
-def find_passer_id(df):
+def find_passer_id_by_quarterback_in_play(df):
+    pass
+
+def find_passer_id_by_closest_to_football(df):
 
     # look for a frame with a "pass_forward" event
     frame_id = get_frame_id_for_event(df, "pass_forward")
@@ -131,7 +134,7 @@ if __name__  == '__main__':
         print("Invalid play id format")
         sys.exit(1)
 
-    tracking_file = "data/kaggle/tracking_week_8.csv"
+    tracking_file = "data/kaggle/tracking_week_1.csv"
     df_tracking = pd.read_csv(tracking_file)
 
     df_play_tracking = df_tracking[
@@ -147,6 +150,7 @@ if __name__  == '__main__':
 
     df_players = pd.read_csv("data/kaggle/players.csv")
 
+
     #print(df_play_tracking.shape)
 
     # print events log
@@ -156,7 +160,10 @@ if __name__  == '__main__':
     print(df_events)
     print()
 
-    passer_id = find_passer_id( df_play_tracking )
+    print(df_play_details["playDescription"].values[0])
+    print()
+
+    passer_id = find_passer_id_by_closest_to_football( df_play_tracking )
     receiver_id = find_targeted_receiver_id( df_play_tracking, df_play_details )
 
     passer_name = get_player_name_by_id( df_players, passer_id )
