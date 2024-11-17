@@ -73,6 +73,7 @@ for game in list_games_week1:
             list_test_set.append(player_row)
 
 df_test_set = pd.DataFrame(list_test_set)
+df_test_set.sort_values(by=['gameId','playId','nflId'],inplace=True)
 
 header = [ "gameId", "playId", "nflId", "isPasser", "isReceiver" ]
 df_test_set.to_csv('data/pass_test_set.csv', columns=header, index=False)

@@ -35,6 +35,8 @@ df_cp_week1 = df_merge[ df_merge["passResult"] == "C" ].copy()
 df_cp_week1["isPasser"] = df_cp_week1.apply(is_passer, axis=1)
 df_cp_week1["isReceiver"] = df_cp_week1.apply(is_receiver, axis=1)
 
+df_cp_week1.sort_values(by=['gameId', 'playId', 'nflId'],inplace=True)
+
 # write result set to csv
 header = [ "gameId", "playId", "nflId", "isPasser", "isReceiver" ]
 df_cp_week1.to_csv('data/pass_result_set.csv', columns=header, index=False)
