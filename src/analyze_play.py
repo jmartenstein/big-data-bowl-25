@@ -79,16 +79,17 @@ def get_closest_defender(df, player_name):
 def find_passer_id_by_quarterback_in_play(df):
     pass
 
-def find_passer_id_by_closest_to_football(df):
-
-    # look for a frame with a "pass_forward" event
-    frame_id = get_frame_id_for_event(df, "pass_forward")
+def find_player_id_by_closest_to_football(df, frame_id):
 
     # get the location of the football at the event
     football_row = df[
         (df['club'] == 'football') & \
         (df['frameId'] == frame_id)
     ]
+
+    if football_row.empty:
+        raise ValueError(f"No football found at frame: {frame_id}")
+
     f_x = football_row['x'].values[0]
     f_y = football_row['y'].values[0]
 
@@ -163,7 +164,11 @@ if __name__  == '__main__':
     print(df_play_details["playDescription"].values[0])
     print()
 
-    passer_id = find_passer_id_by_closest_to_football( df_play_tracking )
+    frame_id = get_frame_id_for_event(df_play_tracking, "pass_forward")
+    if (frame_id < 0):
+        frame_id = get_frame_id_for_event(df_play_tracking, "pass_shovel")
+
+    passer_id = find_player_id_by_closest_to_football( df_play_tracking, frame_id )
     receiver_id = find_targeted_receiver_id( df_play_tracking, df_play_details )
 
     passer_name = get_player_name_by_id( df_players, passer_id )
