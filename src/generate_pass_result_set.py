@@ -14,7 +14,7 @@ df_gs_week1 = df_gs[ df_gs["week"] == 1 ]
 
 list_games_week1 = df_gs_week1[ "gameId" ].unique()
 
-# load plays data,limit to week1
+# load plays data, limit to week1
 df_ps = pd.read_csv("data/kaggle/plays.csv")
 df_ps_week1 = df_ps[ df_ps["gameId"].isin(list_games_week1) ]
 
