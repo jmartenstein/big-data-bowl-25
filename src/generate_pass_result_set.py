@@ -1,5 +1,4 @@
 import pandas as pd
-import math
 import sys
 
 def is_passer(df_pp_row):
