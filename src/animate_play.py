@@ -307,7 +307,7 @@ for frameId in sorted_frame_list:
             mode="markers",
             marker_color=player_color_array,
             marker_size=10,
-            name=str(frameId),
+            name="foo",
             hovertext=hover_text_array,
                 hoverinfo="text",
             )
