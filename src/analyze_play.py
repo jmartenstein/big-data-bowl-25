@@ -53,10 +53,10 @@ def get_closest_player_to_point(x, y, df_players):
 
     return [min_player, min_distance]
 
-def get_closest_defender(df, player_name):
+def get_closest_opposition(df, player_id):
 
     # pull the player's team
-    player_df = df[ df["displayName"] == player_name ]
+    player_df = df[ df["nflId"] == player_id ]
     club = player_df["club"].values[0]
     o_x = player_df["x"].values[0]
     o_y = player_df["y"].values[0]
@@ -65,16 +65,16 @@ def get_closest_defender(df, player_name):
     def_players = df[ ~df["club"].isin([club, "football"]) ]
 
     min_distance = 200
-    min_player = ""
+    min_player_id = 0
 
     for i, p in def_players.iterrows():
         dist = distance.euclidean((o_x, o_y),(p["x"], p["y"]))
         #print(f"{p['displayName']}, {dist}")
         if min_distance > dist:
             min_distance = dist
-            min_player = p["displayName"]
+            min_player_id = p["nflId"]
 
-    return [min_player, min_distance]
+    return [min_player_id, min_distance]
 
 def find_passer_id_by_quarterback_in_play(df):
     pass
@@ -151,9 +151,6 @@ if __name__  == '__main__':
 
     df_players = pd.read_csv("data/kaggle/players.csv")
 
-
-    #print(df_play_tracking.shape)
-
     # print events log
     df_events = df_play_tracking[[ "frameId", "event" ]].dropna()
     df_events = df_events.drop_duplicates()
@@ -188,18 +185,16 @@ if __name__  == '__main__':
         if f.empty:
             continue
 
-        for p in players:
-            if p == "no receiver":
-                continue
+        print(f"Event \"{e}\" at frame {frame_id}")
 
-            player_line = get_player_info_at_frame(f, p)
-            player_info = get_closest_defender(f, p)
-            print(f"{frame_id} ({e}): {p} pos {player_line['x'].values[0]},"
-                  f"{player_line['y'].values[0]} spd {player_line['s'].values[0]}; "
-                  f"near def: {player_info[0]}, {round(player_info[1],2)}")
+        receiver_line = get_player_info_at_frame(f, receiver_name)
+        reception_defender_id, defender_dist = get_closest_opposition(f, receiver_line["nflId"].values[0])
+        defender_name = get_player_name_by_id( df_players, reception_defender_id )
+        rounded_defender_dist = round(defender_dist, 2)
 
         if receiver_name != "no receiver":
-            player_dist = get_player_distance_at_frame(f, passer_name, receiver_name)
-            player_dist = round(player_dist, 2)
-            print(f"{passer_name} to {receiver_name} distance: {player_dist}")
+            player_dist = round(get_player_distance_at_frame(f, passer_name, receiver_name), 2)
+            #player_dist = round(player_dist, 2)
+            print(f"  Passer {passer_name} to receiver {receiver_name} distance: {player_dist}")
+            print(f"  Nearest defender {defender_name} is {rounded_defender_dist} from receiver")
             print()
