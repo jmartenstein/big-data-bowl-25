@@ -72,7 +72,7 @@ game_id  = 2022091103
 play_id  = 1126
 frame_id = 85
 
-highlight_player_ids = [46161, 47924]
+#highlight_player_ids = [46161, 47924]
 
 # load tracking data for the specific frame
 df_tr = pd.read_csv("data/kaggle/tracking_week_1.csv")
