@@ -1,4 +1,4 @@
-# Code to analyze a play from 09/11/2022 between TB and DAL
+# script and library to analyze plays
 
 import pandas as pd
 import numpy as np
@@ -21,9 +21,15 @@ def get_player_name_by_id(df_players, player_id):
     player_row = df_players[ df_players["nflId"] == player_id ]
     return player_row["displayName"].values[0]
 
-def get_player_info_at_frame(df, player_name):
+def get_player_info_by_name_at_frame(df, player_name):
     row = df[
         (df["displayName"] == player_name)
+    ]
+    return row
+
+def get_player_info_by_id_at_frame(df, player_id):
+    row = df[
+        (df["nflId"] == player_id)
     ]
     return row
 
@@ -76,8 +82,11 @@ def get_closest_opposition(df, player_id):
 
     return [min_player_id, min_distance]
 
-def find_passer_id_by_quarterback_in_play(df):
-    pass
+def find_player_ids_by_position(df, position):
+
+    position_rows = df[ df[ "position" ] == position ]
+    player_id_list = position_rows[ "nflId" ].unique()
+    return player_id_list
 
 def find_player_id_by_closest_to_football(df, frame_id):
 
@@ -86,6 +95,9 @@ def find_player_id_by_closest_to_football(df, frame_id):
         (df['club'] == 'football') & \
         (df['frameId'] == frame_id)
     ]
+
+    frame_df = df[ (df['frameId'] == frame_id ) ]
+    #print(frame_df)
 
     if football_row.empty:
         raise ValueError(f"No football found at frame: {frame_id}")
@@ -138,10 +150,11 @@ if __name__  == '__main__':
     tracking_file = "data/kaggle/tracking_week_1.csv"
     df_tracking = pd.read_csv(tracking_file)
 
-    df_play_tracking = df_tracking[
+    df_tracking_unmerged = df_tracking[
         (df_tracking["playId"] == play_id) & \
         (df_tracking["gameId"] == game_id)
-    ]
+    ].copy()
+    df_tracking_unmerged[[ "nflId" ]] = df_tracking_unmerged[[ "nflId" ]].fillna(-1)
 
     df_plays = pd.read_csv("data/kaggle/plays.csv")
     df_play_details = df_plays[
@@ -149,33 +162,72 @@ if __name__  == '__main__':
         (df_plays["gameId"] == game_id)
     ]
 
+    df_player_plays = pd.read_csv("data/kaggle/player_play.csv")
+    df_player_play_details = df_player_plays[
+        (df_player_plays[ "playId" ] == play_id) & \
+        (df_player_plays[ "gameId" ] == game_id)
+    ]
+
     df_players = pd.read_csv("data/kaggle/players.csv")
+    df_players.loc[-1] = { 'nflId': -1, 'position': 'football' }
+    df_players.index = df_players.index + 1
+    df_players = df_players.sort_index()
+
+    df_player_positions = df_players[[ "nflId", "position" ]]
+
+    # merge player positions into tracking data
+    df_play_tracking = df_tracking_unmerged.merge(df_player_positions, on=['nflId'])
 
     # print events log
     df_events = df_play_tracking[[ "frameId", "event" ]].dropna()
     df_events = df_events.drop_duplicates()
 
-    print(df_events)
+    print(df_events.to_string(index=False))
     print()
 
     print(df_play_details["playDescription"].values[0])
     print()
 
-    frame_id = get_frame_id_for_event(df_play_tracking, "pass_forward")
-    if (frame_id < 0):
-        frame_id = get_frame_id_for_event(df_play_tracking, "pass_shovel")
+    is_pass_play = False
+    is_run_play  = False
 
-    passer_id = find_player_id_by_closest_to_football( df_play_tracking, frame_id )
-    receiver_id = find_targeted_receiver_id( df_play_tracking, df_play_details )
+    # is this play a run, pass or other?
+
+    pass_forward_frame_id = get_frame_id_for_event(df_play_tracking, "pass_forward")
+    pass_shovel_frame_id = get_frame_id_for_event(df_play_tracking, "pass_shovel")
+    handoff_frame_id = get_frame_id_for_event(df_play_tracking, "handoff")
+
+    # check if this is a pass play
+    if (handoff_frame_id > 0):
+        is_run_play = True
+        frame_id = handoff_frame_id
+    elif (pass_forward_frame_id > 0):
+        is_pass_play = True
+        frame_id = pass_forward_frame_id
+    elif (pass_shovel_frame_id > 0):
+        is_pass_play = True
+        frame_id = pass_shovel_frame_id
+
+    df_frame = df_play_tracking[ df_play_tracking["frameId"] == frame_id ]
+    qb_player_ids = find_player_ids_by_position(df_frame, "QB")
+    passer_id = qb_player_ids[0]
+
+    if is_pass_play:
+        ballcarrier_id = find_targeted_receiver_id( df_play_tracking, df_play_details )
+    else:
+        rb_ids = find_player_ids_by_position( df_frame, "RB" )
+        ballcarrier_id = rb_ids[0]
 
     passer_name = get_player_name_by_id( df_players, passer_id )
-    if receiver_id != 0:
-        receiver_name = get_player_name_by_id( df_players, receiver_id )
+    if ballcarrier_id != 0:
+        ballcarrier_name = get_player_name_by_id( df_players, ballcarrier_id )
     else:
-        receiver_name = "no receiver"
+        ballcarrier_name = "no receiver"
 
-    events = [ "pass_forward", "pass_arrived" ]
-    players = [passer_name, receiver_name]
+    if is_pass_play:
+        events = [ "pass_forward", "pass_arrived" ]
+    elif is_run_play:
+        events = [ "handoff", "tackle" ]
 
     for e in events:
 
@@ -187,14 +239,14 @@ if __name__  == '__main__':
 
         print(f"Event \"{e}\" at frame {frame_id}")
 
-        receiver_line = get_player_info_at_frame(f, receiver_name)
-        reception_defender_id, defender_dist = get_closest_opposition(f, receiver_line["nflId"].values[0])
+        ballcarrier_line = get_player_info_by_name_at_frame(f, ballcarrier_name)
+        reception_defender_id, defender_dist = get_closest_opposition(f, ballcarrier_line["nflId"].values[0])
         defender_name = get_player_name_by_id( df_players, reception_defender_id )
         rounded_defender_dist = round(defender_dist, 2)
 
-        if receiver_name != "no receiver":
-            player_dist = round(get_player_distance_at_frame(f, passer_name, receiver_name), 2)
+        if ballcarrier_name != "no receiver":
+            player_dist = round(get_player_distance_at_frame(f, passer_name, ballcarrier_name), 2)
             #player_dist = round(player_dist, 2)
-            print(f"  Passer {passer_name} to receiver {receiver_name} distance: {player_dist}")
+            print(f"  Passer {passer_name} to receiver {ballcarrier_name} distance: {player_dist}")
             print(f"  Nearest defender {defender_name} is {rounded_defender_dist} from receiver")
             print()
