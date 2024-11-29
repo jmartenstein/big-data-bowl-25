@@ -42,13 +42,15 @@ playId: 2132
 
 # Potential Metrics
 
-Pre-Snap Readiness
-
 Matchup Favorability
+
+Pre-Snap Readiness
 
 Spatial Advantage
 
 # To Do
+
+Predict receiver / defense match ups
 
 Correlation of yards gained to expected points added in week1
 
