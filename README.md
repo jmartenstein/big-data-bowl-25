@@ -40,4 +40,22 @@ playId: 2132
 
 `grep -E "2022092503,2132" data/kaggle/plays.csv`
 
-# Analysis References
+# Potential Metrics
+
+Pre-Snap Readiness
+
+Matchup Favorability
+
+Spatial Advantage
+
+# To Do
+
+Correlation of yards gained to expected points added?
+
+Compare normal distributions
+
+Parameterize normal distbituion functions (add to analze play?)
+
+How long betweeen snap and next event?
+
+Use Analyze Play beyond Week 1
