@@ -17,6 +17,19 @@ def get_frame_id_for_event(df, event_name):
         frame_id = event_row["frameId"].values[0]
     return frame_id
 
+def count_frames_between_events(df, event_name1, event_name2):
+    frame_count = 0
+    return frame_count
+
+def get_top_speed_from_player_frames(df):
+    fast_idx = df['s'].idxmax()
+    fastest_row = df.loc[ fast_idx ]
+    return round(fastest_row['s'],2), fastest_row['nflId'], fastest_row['frameId']
+
+def get_distance_traveled_from_player_frames(df):
+    sum_dist = df['dis'].sum()
+    return round(sum_dist,2)
+
 def get_player_name_by_id(df_players, player_id):
     player_row = df_players[ df_players["nflId"] == player_id ]
     return player_row["displayName"].values[0]
@@ -173,9 +186,8 @@ if __name__  == '__main__':
     df_players.index = df_players.index + 1
     df_players = df_players.sort_index()
 
-    df_player_positions = df_players[[ "nflId", "position" ]]
-
     # merge player positions into tracking data
+    df_player_positions = df_players[[ "nflId", "position" ]]
     df_play_tracking = df_tracking_unmerged.merge(df_player_positions, on=['nflId'])
 
     # print events log
@@ -186,6 +198,18 @@ if __name__  == '__main__':
     print()
 
     print(df_play_details["playDescription"].values[0])
+    print()
+
+    expected_points = round(df_play_details['expectedPoints'].values[0],2)
+    print(f"Expected Points:       {expected_points}")
+    points_added = round(df_play_details['expectedPointsAdded'].values[0],2)
+    print(f"Expected Points Added: {points_added}")
+    offense_formation = df_play_details['offenseFormation'].values[0]
+    print(f"Offense Formation:     {offense_formation}")
+    receiver_alignment = df_play_details['receiverAlignment'].values[0]
+    print(f"Receiver Alignment:    {receiver_alignment}")
+    pass_coverage = df_play_details['pff_passCoverage'].values[0]
+    print(f"Pass Coverage:         {pass_coverage}")
     print()
 
     is_pass_play = False
@@ -228,6 +252,33 @@ if __name__  == '__main__':
         events = [ "pass_forward", "pass_arrived" ]
     elif is_run_play:
         events = [ "handoff", "tackle" ]
+
+    print(f"Before the snap")
+
+    set_frame_id = get_frame_id_for_event(df_events, "line_set")
+    snap_frame_id = get_frame_id_for_event(df_events, "ball_snap")
+
+    df_pre_snap = df_play_tracking[ ( df_play_tracking[ "frameId" ] >= set_frame_id ) & \
+                                    ( df_play_tracking[ "frameId" ] <= snap_frame_id )
+                                  ]
+
+    offense_team = df_play_details[ "possessionTeam" ].values[0]
+    offense_players_pre_snap = df_pre_snap[ df_pre_snap[ "club" ] == offense_team ]
+    spd, p_id, f_id = get_top_speed_from_player_frames(offense_players_pre_snap)
+    name = get_player_name_by_id( df_players, p_id )
+    print(f"  Fastest offensive player: {name}, {spd} yd/s at frame {f_id}")
+    off_distance_traveled = get_distance_traveled_from_player_frames(offense_players_pre_snap)
+    print(f"  Offense traveled a total of {off_distance_traveled} yds")
+
+    defense_team = df_play_details[ "defensiveTeam" ].values[0]
+    defense_players_pre_snap = df_pre_snap[ df_pre_snap[ "club" ] == defense_team ]
+    spd, p_id, f_id = get_top_speed_from_player_frames(defense_players_pre_snap)
+    name = get_player_name_by_id( df_players, p_id )
+    print(f"  Fastest defensive player: {name} at {spd} yd/s at frame {f_id}")
+    def_distance_traveled = get_distance_traveled_from_player_frames(defense_players_pre_snap)
+    print(f"  Defense traveled a total of {def_distance_traveled} yds")
+
+    print()
 
     for e in events:
 
