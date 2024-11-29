@@ -50,12 +50,14 @@ Spatial Advantage
 
 # To Do
 
-Correlation of yards gained to expected points added?
-
-Compare normal distributions
-
-Parameterize normal distbituion functions (add to analze play?)
+Correlation of yards gained to expected points added in week1
 
 How long betweeen snap and next event?
 
+Compare normal distributions
+
+Parameterize normal distribution functions (add to analze play?)
+
 Use Analyze Play beyond Week 1
+
+Move df_players to lookup class / data object
