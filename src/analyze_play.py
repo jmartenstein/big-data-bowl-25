@@ -59,7 +59,7 @@ def get_player_distance_at_frame(df, player1, player2):
     p2_x = p2_row['x'].values[0]
     p2_y = p2_row['y'].values[0]
 
-    dist = st.distance.euclidean((p1_x, p1_y), (p2_x, p2_y))
+    dist = sp.distance.euclidean((p1_x, p1_y), (p2_x, p2_y))
     return dist
 
 def get_closest_player_to_point(x, y, df_players):
@@ -68,7 +68,7 @@ def get_closest_player_to_point(x, y, df_players):
     min_player_id = 0
 
     for i, p in df_players.iterrows():
-        dist = st.distance.euclidean((x, y),(p["x"], p["y"]))
+        dist = sp.distance.euclidean((x, y),(p["x"], p["y"]))
         if min_distance > dist:
             min_distance = dist
             min_player = p["nflId"]
@@ -90,7 +90,7 @@ def get_closest_opposition(df, player_id):
     min_player_id = 0
 
     for i, p in def_players.iterrows():
-        dist = st.distance.euclidean((o_x, o_y),(p["x"], p["y"]))
+        dist = sp.distance.euclidean((o_x, o_y),(p["x"], p["y"]))
         #print(f"{p['displayName']}, {dist}")
         if min_distance > dist:
             min_distance = dist
@@ -128,7 +128,7 @@ def find_player_id_by_closest_to_football(df, frame_id):
     ]
 
     # find the closest player to the football (ASSUMPTION: this is the QB)
-    min_player, distance = get_closest_player_to_point(f_x, f_y, player_rows)
+    min_player, min_distance = get_closest_player_to_point(f_x, f_y, player_rows)
 
     return min_player
 
@@ -139,18 +139,25 @@ def find_targeted_receiver_id(p_df, d_df):
 
     min_player = 0
     if not (math.isnan(t_x) or math.isnan(t_y)):
-        min_player, distance = get_closest_player_to_point(t_x, t_y, p_df)
+        min_player, min_distance = get_closest_player_to_point(t_x, t_y, p_df)
 
     return min_player
 
-def print_pre_snap_analysis(df, club):
+def print_pre_snap_analysis(df, club, is_offense):
 
-    print(f"  Offense: {club}")
+    if is_offense:
+        print(f"  Offense: {club}")
+    else:
+        print(f"  Defense: {club}")
+
     team_pre_snap = df[ df[ "club" ] == club ]
     spd, p_id, f_id = get_top_speed_from_player_frames(team_pre_snap)
     name = get_player_name_by_id( df, p_id )
+
     print(f"    Top speed: {name}, {spd} yd/s at frame {f_id}")
+
     distance_traveled = get_distance_traveled_from_player_frames(team_pre_snap)
+
     print(f"    Team moved {distance_traveled} yds total before the snap")
 
     return True
@@ -183,6 +190,16 @@ def generate_mesh_grid(max_x, min_x, max_y, min_y):
     X, Y = np.meshgrid(range_x, range_y)
 
     return X, Y
+
+def print_distribution_details( mean, cov ):
+
+    x = round(mean[0], 2)
+    y = round(mean[1], 2)
+
+    print( f"  mean: {x}, {y}" )
+    print( f"  cov: {cov[0]} {cov[1]}")
+
+    return True
 
 
 ### MAIN ###
@@ -233,10 +250,10 @@ if __name__  == '__main__':
 
     # merge player positions into tracking data
     df_player_positions = df_players[[ "nflId", "position" ]]
-    df_play_tracking = df_tracking_unmerged.merge(df_player_positions, on=['nflId'])
+    df_tr = df_tracking_unmerged.merge(df_player_positions, on=['nflId'])
 
     # print events log
-    df_events = df_play_tracking[[ "frameId", "event" ]].dropna()
+    df_events = df_tr[[ "frameId", "event" ]].dropna()
     df_events = df_events.drop_duplicates()
 
     print(df_events.to_string(index=False))
@@ -263,9 +280,9 @@ if __name__  == '__main__':
 
     # is this play a run, pass or other?
 
-    pass_forward_frame_id = get_frame_id_for_event(df_play_tracking, "pass_forward")
-    pass_shovel_frame_id = get_frame_id_for_event(df_play_tracking, "pass_shovel")
-    handoff_frame_id = get_frame_id_for_event(df_play_tracking, "handoff")
+    pass_forward_frame_id = get_frame_id_for_event(df_tr, "pass_forward")
+    pass_shovel_frame_id = get_frame_id_for_event(df_tr, "pass_shovel")
+    handoff_frame_id = get_frame_id_for_event(df_tr, "handoff")
 
     # check if this is a pass play
     if (handoff_frame_id > 0):
@@ -278,12 +295,12 @@ if __name__  == '__main__':
         is_pass_play = True
         frame_id = pass_shovel_frame_id
 
-    df_frame = df_play_tracking[ df_play_tracking["frameId"] == frame_id ]
+    df_frame = df_tr[ df_tr["frameId"] == frame_id ]
     qb_player_ids = find_player_ids_by_position(df_frame, "QB")
     passer_id = qb_player_ids[0]
 
     if is_pass_play:
-        ballcarrier_id = find_targeted_receiver_id( df_play_tracking, df_play_details )
+        ballcarrier_id = find_targeted_receiver_id( df_tr, df_play_details )
     else:
         rb_ids = find_player_ids_by_position( df_frame, "RB" )
         ballcarrier_id = rb_ids[0]
@@ -305,28 +322,44 @@ if __name__  == '__main__':
     set_frame_id = get_frame_id_for_event(df_events, "line_set")
     snap_frame_id = get_frame_id_for_event(df_events, "ball_snap")
 
+    offense_team = df_play_details[ "possessionTeam" ].values[0]
+    defense_team = df_play_details[ "defensiveTeam" ].values[0]
+
     # pull offense team distribution at set
+    df_offense_at_set = df_tr[ ( df_tr[ "frameId" ] == set_frame_id ) & \
+                               ( df_tr[ "club" ] == offense_team )
+                             ]
+    off_mean_at_set, off_cov_at_set = calc_team_dist(df_offense_at_set)
 
     # pull offense team distribution as snap
+    df_offense_at_snap = df_tr[ ( df_tr[ "frameId" ] == snap_frame_id ) & \
+                                ( df_tr[ "club" ] == offense_team )
+                              ]
+    off_mean_at_snap, off_cov_at_snap = calc_team_dist(df_offense_at_snap)
+
+    #off_dist_at_set = st.multivariate_normal(off_mean_at_set, off_cov_at_set)
+    #off_dist_at_snap = st.multivariate_normal(off_mean_at_snap, off_cov_at_snap)
+    #print(off_dist_at_set.entropy())
+    #print(off_dist_at_snap.entropy())
 
     # compare distributions
+    #print(off_cov_at_set)
+    #print(off_cov_at_snap)
 
 
     # build a dataframe of pre-snap frames
-    df_pre_snap = df_play_tracking[ ( df_play_tracking[ "frameId" ] >= set_frame_id ) & \
-                                    ( df_play_tracking[ "frameId" ] <= snap_frame_id )
-                                  ]
+    df_pre_snap = df_tr[ ( df_tr[ "frameId" ] >= set_frame_id ) & \
+                         ( df_tr[ "frameId" ] <= snap_frame_id )
+                       ]
 
-    offense_team = df_play_details[ "possessionTeam" ].values[0]
-    print_pre_snap_analysis( df_pre_snap, offense_team )
-    defense_team = df_play_details[ "defensiveTeam" ].values[0]
-    print_pre_snap_analysis( df_pre_snap, defense_team )
+    print_pre_snap_analysis( df_pre_snap, offense_team, True)
+    print_pre_snap_analysis( df_pre_snap, defense_team, False )
     print()
 
     for e in events:
 
         frame_id = get_frame_id_for_event(df_events, e)
-        f = df_play_tracking[ df_play_tracking["frameId"] == frame_id ]
+        f = df_tr[ df_tr["frameId"] == frame_id ]
 
         if f.empty:
             continue

@@ -39,15 +39,6 @@ def print_point_and_value(x, y, z):
     print(f"  x: {round(x,2)}, y: {round(y,2)}  z: {round(z,2)}, w: {round(w,2)}")
     return True
 
-def print_distribution_details( mean, cov ):
-
-    x = round(mean[0], 2)
-    y = round(mean[1], 2)
-
-    print( f"  mean: {x}, {y}" )
-    print( f"  cov: {cov[0]} {cov[1]}")
-
-    return True
 
 
 game_id = 0
@@ -112,10 +103,10 @@ max_x, min_x, max_y, min_y = find_frame_boundaries(df_frame, 5, True)
 X, Y = ap.generate_mesh_grid(max_x, min_x, max_y, min_y)
 
 print(f"Defense")
-print_distribution_details( def_mean, def_cov )
+ap.print_distribution_details( def_mean, def_cov )
 
 print(f"Offense")
-print_distribution_details( off_mean, off_cov )
+ap.print_distribution_details( off_mean, off_cov )
 
 def_Z = ap.score_z_values(X, Y, def_mean, def_cov, 100)
 off_Z = ap.score_z_values(X, Y, off_mean, off_cov, -100)
