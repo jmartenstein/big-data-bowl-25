@@ -4,7 +4,10 @@ import pandas as pd
 import numpy as np
 import math
 
-from scipy.spatial import distance
+import scipy.stats as st
+import scipy.spatial as sp
+
+#from scipy.spatial import distance
 
 import sys
 
@@ -56,7 +59,7 @@ def get_player_distance_at_frame(df, player1, player2):
     p2_x = p2_row['x'].values[0]
     p2_y = p2_row['y'].values[0]
 
-    dist = distance.euclidean((p1_x, p1_y), (p2_x, p2_y))
+    dist = st.distance.euclidean((p1_x, p1_y), (p2_x, p2_y))
     return dist
 
 def get_closest_player_to_point(x, y, df_players):
@@ -65,7 +68,7 @@ def get_closest_player_to_point(x, y, df_players):
     min_player_id = 0
 
     for i, p in df_players.iterrows():
-        dist = distance.euclidean((x, y),(p["x"], p["y"]))
+        dist = st.distance.euclidean((x, y),(p["x"], p["y"]))
         if min_distance > dist:
             min_distance = dist
             min_player = p["nflId"]
@@ -87,7 +90,7 @@ def get_closest_opposition(df, player_id):
     min_player_id = 0
 
     for i, p in def_players.iterrows():
-        dist = distance.euclidean((o_x, o_y),(p["x"], p["y"]))
+        dist = st.distance.euclidean((o_x, o_y),(p["x"], p["y"]))
         #print(f"{p['displayName']}, {dist}")
         if min_distance > dist:
             min_distance = dist
@@ -151,6 +154,36 @@ def print_pre_snap_analysis(df, club):
     print(f"    Team moved {distance_traveled} yds total before the snap")
 
     return True
+
+def calc_team_dist(df_players):
+
+    df_players_pos = df_players[[ "x", "y" ]]
+    mean = np.mean(df_players_pos, axis=0)
+    cov = np.cov(df_players_pos, rowvar=False)
+
+    return mean, cov
+
+def score_z_values(X, Y, mean, cov, weight=1):
+
+    pos = np.dstack((X, Y))
+    rv = st.multivariate_normal(mean, cov)
+
+    Z_pre = rv.pdf(pos)
+    Z = [ (weight * x) for x in Z_pre ]
+
+    Z_mean = rv.pdf(mean) * weight
+
+    return Z
+
+def generate_mesh_grid(max_x, min_x, max_y, min_y):
+
+    range_x = np.linspace(min_x, max_x)
+    range_y = np.linspace(min_y, max_y)
+
+    X, Y = np.meshgrid(range_x, range_y)
+
+    return X, Y
+
 
 ### MAIN ###
 
@@ -272,6 +305,14 @@ if __name__  == '__main__':
     set_frame_id = get_frame_id_for_event(df_events, "line_set")
     snap_frame_id = get_frame_id_for_event(df_events, "ball_snap")
 
+    # pull offense team distribution at set
+
+    # pull offense team distribution as snap
+
+    # compare distributions
+
+
+    # build a dataframe of pre-snap frames
     df_pre_snap = df_play_tracking[ ( df_play_tracking[ "frameId" ] >= set_frame_id ) & \
                                     ( df_play_tracking[ "frameId" ] <= snap_frame_id )
                                   ]

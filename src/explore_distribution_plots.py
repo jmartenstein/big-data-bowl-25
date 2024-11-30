@@ -6,14 +6,6 @@ import sys
 
 import analyze_play as ap
 
-def calc_team_dist(df_players):
-
-    df_players_pos = df_players[[ "x", "y" ]]
-    mean = np.mean(df_players_pos, axis=0)
-    cov = np.cov(df_players_pos, rowvar=False)
-
-    return mean, cov
-
 def find_frame_boundaries(df_frame, padding, flag_absolute):
 
     list_x = df_frame["x"].values
@@ -31,14 +23,6 @@ def find_frame_boundaries(df_frame, padding, flag_absolute):
 
     return max_x, min_x, max_y, min_y
 
-def generate_mesh_grid(max_x, min_x, max_y, min_y):
-
-    range_x = np.linspace(min_x, max_x)
-    range_y = np.linspace(min_y, max_y)
-
-    X, Y = np.meshgrid(range_x, range_y)
-
-    return X, Y
 
 def plot_players(plt, df_players):
 
@@ -65,18 +49,6 @@ def print_distribution_details( mean, cov ):
 
     return True
 
-def score_z_values(X, Y, mean, cov, weight=1):
-
-    pos = np.dstack((X, Y))
-    rv = st.multivariate_normal(mean, cov)
-
-    Z_pre = rv.pdf(pos)
-    Z = [ (weight * x) for x in Z_pre ]
-
-    Z_mean = rv.pdf(mean) * weight
-    #print_point_and_value(mean["x"], mean["y"], Z_mean)
-
-    return Z
 
 game_id = 0
 play_id = 0
@@ -133,11 +105,11 @@ df_offense_players = df_frame[ df_frame["club"] == offense ]
 # plot speed arrows
 
 # plot gaussian influence distributions
-def_mean, def_cov = calc_team_dist(df_defense_players)
-off_mean, off_cov = calc_team_dist(df_offense_players)
+def_mean, def_cov = ap.calc_team_dist(df_defense_players)
+off_mean, off_cov = ap.calc_team_dist(df_offense_players)
 
 max_x, min_x, max_y, min_y = find_frame_boundaries(df_frame, 5, True)
-X, Y = generate_mesh_grid(max_x, min_x, max_y, min_y)
+X, Y = ap.generate_mesh_grid(max_x, min_x, max_y, min_y)
 
 print(f"Defense")
 print_distribution_details( def_mean, def_cov )
@@ -145,8 +117,8 @@ print_distribution_details( def_mean, def_cov )
 print(f"Offense")
 print_distribution_details( off_mean, off_cov )
 
-def_Z = score_z_values(X, Y, def_mean, def_cov, 100)
-off_Z = score_z_values(X, Y, off_mean, off_cov, -100)
+def_Z = ap.score_z_values(X, Y, def_mean, def_cov, 100)
+off_Z = ap.score_z_values(X, Y, off_mean, off_cov, -100)
 Z = [sum(x) for x in zip(def_Z, off_Z)]
 
 # plot players
