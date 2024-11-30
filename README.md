@@ -52,6 +52,9 @@ Spatial Advantage
 
 Predict receiver / defense match ups
 
+Adapt distribution weights, so that 0.0 lines up line of scrimmage
+  at line set; how far does this move at snap?
+
 Correlation of yards gained to expected points added in week1
 
 How long betweeen snap and next event?
