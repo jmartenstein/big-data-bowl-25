@@ -26,6 +26,7 @@ data_dir = "./data/kaggle"
 tracking_prefix = data_dir + "/tracking_week_"
 plays_file = data_dir + "/plays.csv"
 games_file = data_dir + "/games.csv"
+players_file = data_dir + "/players.csv"
 
 if (len(sys.argv) < 3):
     print("Specify gameId and playId")
@@ -93,6 +94,7 @@ colors = {
 # Handle Data I/O
 df_game = pd.read_csv(games_file)
 df_plays = pd.read_csv(plays_file)
+df_players = pd.read_csv(players_file)
 
 try:
     week_number = df_game[(df_game["gameId"] == game_id)]["week"].values[0]
@@ -101,9 +103,18 @@ except:
     sys.exit(1)
 
 tracking_file = tracking_prefix + str(week_number) + ".csv"
-df_tracking = pd.read_csv(tracking_file)
+df_tracking_unmerged = pd.read_csv(tracking_file)
 
-df_full_tracking = df_tracking.merge(df_plays, on=["gameId", "playId"])
+# add footbal to players dataset
+df_tracking_unmerged[[ "nflId" ]] = df_tracking_unmerged[[ "nflId" ]].fillna(-1)
+df_players.loc[-1] = { 'nflId': -1, 'position': 'football' }
+df_players.index = df_players.index + 1
+df_players = df_players.sort_index()
+
+# merge player positions into tracking data
+df_player_positions = df_players[[ "nflId", "position" ]]
+df_tr = df_tracking_unmerged.merge(df_player_positions, on=['nflId'])
+df_full_tracking = df_tr.merge(df_plays, on=["gameId", "playId"])
 
 df_focused = df_full_tracking[
     (df_full_tracking["playId"] == play_id) & (df_full_tracking["gameId"] == game_id)
@@ -285,16 +296,15 @@ for frameId in sorted_frame_list:
         p_id = int(selected_player_df['nflId'].values[0])
         p_name = selected_player_df['displayName'].values[0]
         p_speed = selected_player_df['s'].values[0]
+        p_pos = selected_player_df['position'].values[0]
         #if not selected_player_df['dir'].values[0].isnull():
         #    p_dir = int(selected_player_df['dir'].values[0])
         #p_o = int(selected_player_df['o'].values[0])
 
         hover_text_array.append(
-            f"id: {str(p_id)}<br>" + \
+            f"id: {str(p_id)}, pos: {p_pos}<br>" + \
             f"name: {p_name}<br>" + \
             f"spd: {p_speed} yd/sec<br>"
-            #f"dir: {str(p_dir)} degrees<br>" + \
-            #f"dir-o: {str(p_dir-p_o)} degrees"
         )
 
         color = colors[selected_player_df['club'].values[0]]
