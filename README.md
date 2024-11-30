@@ -58,7 +58,7 @@ How long betweeen snap and next event?
 
 Compare normal distributions
 
-Parameterize normal distribution functions (add to analze play?)
+~~Parameterize normal distribution functions (add to analze play?)~~
 
 Use Analyze Play beyond Week 1
 
