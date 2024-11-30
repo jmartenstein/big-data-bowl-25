@@ -59,6 +59,8 @@ Correlation of yards gained to expected points added in week1
 
 How long betweeen snap and next event?
 
+If a player is in motion before the snap, what are the chances they get the ball?
+
 Compare normal distributions
 
 ~~Parameterize normal distribution functions (add to analze play?)~~
