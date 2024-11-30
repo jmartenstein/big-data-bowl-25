@@ -20,10 +20,5 @@ print(df_yardage_gained.shape)
 df_yg_sorted = df_yardage_gained.sort_values(by="yardageGainedAfterTheCatch",
                                              ascending=False)
 
-df_top10 = df_yg_sorted[:5]
-print(df_top10[[ "gameId", "playId", "nflId", "yardageGainedAfterTheCatch" ]])
-
-
-
-
-
+df_top = df_yg_sorted[:20]
+print(df_top[[ "gameId", "playId", "nflId", "yardageGainedAfterTheCatch" ]])
