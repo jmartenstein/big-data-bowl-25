@@ -33,6 +33,9 @@ def get_distance_traveled_from_player_frames(df):
     sum_dist = df['dis'].sum()
     return round(sum_dist,2)
 
+def get_pre_snap_frames(df):
+    pass
+
 def get_player_name_by_id(df_players, player_id):
     player_row = df_players[ df_players["nflId"] == player_id ]
     return player_row["displayName"].values[0]
