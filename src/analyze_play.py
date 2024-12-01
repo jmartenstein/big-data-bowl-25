@@ -312,10 +312,10 @@ if __name__  == '__main__':
         ballcarrier_name = "no receiver"
 
     events = []
-    #if is_pass_play:
-    #    events = [ "pass_forward", "pass_arrived" ]
-    #elif is_run_play:
-    #    events = [ "handoff", "tackle" ]
+    if is_pass_play:
+        events = [ "pass_forward", "pass_arrived" ]
+    elif is_run_play:
+        events = [ "handoff", "tackle" ]
 
     print(f"Pre-snap analysis")
 
