@@ -91,6 +91,13 @@ colors = {
     "tackle": "#FFC0CB",
 }
 
+position_groups = {
+    "Backs & Receivers": ["QB", "WR", "RB", "TE"],
+    "Offensive Line":    ["C", "G", "T"],
+    "Defense":           ["NT", "CB", "DT", "DE", "ILB", "OLB", "SS", "FS"],
+    "Football":          ["football"]
+}
+
 # Handle Data I/O
 df_game = pd.read_csv(games_file)
 df_plays = pd.read_csv(plays_file)
@@ -279,8 +286,6 @@ for frameId in sorted_frame_list:
         (df_focused.frameId == frameId)
     ].copy()
 
-    hover_text_array = []
-    player_color_array = []
 
     # because football doesn't have an nflId, we're going to insert one
     # we assume each frame only has a single football
@@ -289,36 +294,43 @@ for frameId in sorted_frame_list:
 
     p_dir = 0
 
-    for nflId in plot_df.nflId:
+    # For the purposes of the plotly scatter, we have positional groups,
+    # which allow us to select and deselect different groups on the plot
 
-        selected_player_df = plot_df[plot_df.nflId == nflId]
+    for group, positions in position_groups.items():
 
-        p_id = int(selected_player_df['nflId'].values[0])
-        p_name = selected_player_df['displayName'].values[0]
-        p_speed = selected_player_df['s'].values[0]
-        p_pos = selected_player_df['position'].values[0]
-        #if not selected_player_df['dir'].values[0].isnull():
-        #    p_dir = int(selected_player_df['dir'].values[0])
-        #p_o = int(selected_player_df['o'].values[0])
+        pos_group_df = plot_df[ plot_df["position"].isin(positions) ]
 
-        hover_text_array.append(
-            f"id: {str(p_id)}, pos: {p_pos}<br>" + \
-            f"name: {p_name}<br>" + \
-            f"spd: {p_speed} yd/sec<br>"
-        )
+        hover_text_array = []
+        position_group_array = []
+        player_color_array = []
 
-        color = colors[selected_player_df['club'].values[0]]
-        player_color_array.append(color)
+        for nflId in pos_group_df.nflId:
 
-    data.append(
-        go.Scatter(
-            x=plot_df["x"],
-            y=plot_df["y"],
-            mode="markers",
-            marker_color=player_color_array,
-            marker_size=10,
-            name="foo",
-            hovertext=hover_text_array,
+            selected_player_df = pos_group_df[pos_group_df.nflId == nflId]
+
+            p_id = int(selected_player_df['nflId'].values[0])
+            p_name = selected_player_df['displayName'].values[0]
+            p_speed = selected_player_df['s'].values[0]
+            p_pos = selected_player_df['position'].values[0]
+
+            hover_text = f"id: {str(p_id)}, pos: {p_pos}<br>" + \
+                         f"name: {p_name}<br>" + \
+                         f"spd: {p_speed} yd/sec<br>"
+            hover_text_array.append(hover_text)
+
+            color = colors[pos_group_df['club'].values[0]]
+            player_color_array.append(color)
+
+        data.append(
+            go.Scatter(
+                x=pos_group_df["x"],
+                y=pos_group_df["y"],
+                mode="markers",
+                marker_color=player_color_array,
+                marker_size=10,
+                name=group,
+                hovertext=hover_text_array,
                 hoverinfo="text",
             )
         )
