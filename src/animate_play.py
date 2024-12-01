@@ -147,7 +147,7 @@ down = df_focused.down.values[0]
 quarter = df_focused.quarter.values[0]
 gameClock = df_focused.gameClock.values[0]
 playDescription = df_focused.playDescription.values[0]
-tackle_frame_id = -1
+lineset_frame_id = -1
 
 # Handle case where we have a really long Play Description and want to split it into two lines
 if len(playDescription.split(" ")) > 15 and len(playDescription) > 115:
@@ -286,6 +286,9 @@ for frameId in sorted_frame_list:
         (df_focused.frameId == frameId)
     ].copy()
 
+    # get frame for Line Set event
+    if plot_df.event.values[0] == 'line_set':
+        lineset_frame_id = frameId
 
     # because football doesn't have an nflId, we're going to insert one
     # we assume each frame only has a single football
@@ -366,7 +369,7 @@ layout = go.Layout(
     yaxis=dict(range=[0, 53.3], autorange=False, showgrid=False, showticklabels=False),
     plot_bgcolor="#00B140",
     # Create title and add play description at the bottom of the chart for better visual appeal
-    title=f"GameId: {game_id}, PlayId: {play_id}<br>{gameClock} {quarter}Q, Man in Motion at Frame {tackle_frame_id}"
+    title=f"GameId: {game_id}, PlayId: {play_id}<br>{gameClock} {quarter}Q, Line Set at Frame {lineset_frame_id}"
     + "<br>" * 19
     + f"{playDescription}",
     updatemenus=updatemenus_dict,
