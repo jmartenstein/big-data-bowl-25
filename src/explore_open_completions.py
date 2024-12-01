@@ -75,12 +75,12 @@ for g in list_games_week1:
                                                                    target_y,
                                                                    df_offense)
         # find the nearest defender to player
-        closest_defense, player_distance = ap.get_closest_defender(df_frame_play,
+        closest_defense, player_distance = ap.get_closest_opposition(df_frame_play,
                                                                    closest_offense)
 
         # add results to pass results data frame
 
         # print play information
         print(f"{g}, {p} - offense: {closest_offense}, defense: {closest_defense}, "
-              f"distance: {round(player_distance,2)}, result: {result}")
+              f"separation: {round(player_distance,2)}, result: {result}")
         #print(closest_defense)
