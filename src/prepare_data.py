@@ -39,11 +39,16 @@ df_first_down_conversions = df_valid_ps_w1[
 
 df_offense_success = df_first_down_conversions.combine_first(df_run_plays)
 
-# remove duplicates and re-index
 
 print(f"Found {len(df_offense_success)} successful offensive plays, combination of:")
 print(f"  {len(df_run_plays)} run plays over {threshold} yards gained")
 print(f"  {len(df_first_down_conversions)} first down conversions")
+
+# remove duplicates and re-index
+df_offense_success = df_offense_success.drop_duplicates()
+df_offense_success.reset_index(drop = True)
+
+print(f"After re-indexing, confirmed {len(df_offense_success)} plays")
 print()
 
 # defensive success plays: loss of yardage, incomplete passes and turnovers
@@ -59,18 +64,26 @@ df_sacks_and_yards_lost = df_yards_lost.combine_first(df_sacks)
 df_defense_success = pd.concat([df_sacks_and_yards_lost, df_interceptions,
                                df_incomplete_passes])
 
-# remove duplicates and re-index
-
 print(f"Found {len(df_defense_success)} successful defensive plays, combination of:")
 print(f"  {len(df_incomplete_passes)} incomplete passes")
 print(f"  {len(df_yards_lost)} plays with lost yardage")
 print(f"  {len(df_sacks)} sacks")
 print(f"  {len(df_interceptions)} interceptions")
 
+# remove duplicates and re-index
+df_defense_success = df_defense_success.drop_duplicates()
+df_defense_success.reset_index(drop = True)
+
+print(f"After re-indexing, confirmed {len(df_defense_success)} plays")
+print()
+
 # get unsuccessful plays by combining defense and offense, and finding plays
 # not in both sets (left join?)
+df_combined_success = pd.concat([ df_offense_success, df_defense_success ])
 
+df_non_ = df_valid_ps_w1.merge(df_combined_success.drop_duplicates(),
+                               on=['gameId','playId'],
+                               how='left', indicator=True)
+df_nonsuccess = df_non_[ df_non_ [ "_merge" ] == "left_only" ]
 
-
-
-
+print(f"Found {len(df_nonsuccess)} unsuccessful plays")
