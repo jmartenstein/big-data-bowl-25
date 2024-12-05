@@ -69,7 +69,7 @@ for idx, row in df_ps_week1.iterrows():
     defense_dist = ap.get_distance_traveled_from_player_frames(df_defense_pre_snap)
     df_ps_week1.loc[ idx, "defenseDistanceTraveled" ] = defense_dist
 
-    df_ps_week1.loc[ idx, "elapsedTime" ] = snap_frame_id - set_frame_id
+    df_ps_week1.loc[ idx, "elapsedTime" ] = (snap_frame_id - set_frame_id) / 10
 
     # the for loop is slow, print a progress bar; maybe we can use a group_by
     # here instead?
@@ -84,6 +84,7 @@ output_features = [ "gameId",
                     "playId",
                     "passLength",
                     "passResult",
+                    "penaltyYards",
                     "yardsGained",
                     "yardsToGo",
                     "maxOffenseSpeed",
