@@ -78,15 +78,18 @@ for idx, row in df_ps_week1.iterrows():
         print('.', end='', flush=True)
 
 print()
-print(df_ps_week1)
+print(df_ps_week1.columns.values)
 
-#data = df_ps_week1[[ "offenseDistanceTraveled" ]]
-#num_bins = 50
+output_features = [ "gameId",
+                    "playId",
+                    "passLength",
+                    "passResult",
+                    "yardsGained",
+                    "yardsToGo",
+                    "maxOffenseSpeed",
+                    "maxDefenseSpeed",
+                    "offenseDistanceTraveled",
+                    "defenseDistanceTraveled",
+                    "elapsedTime" ]
 
-#hist, bin_edges = np.histogram(data, num_bins)
-#plt.hist(data, num_bins)
-#plt.xlim(0,40)
-
-#plt.show()
-
-
+df_ps_week1[ output_features ].to_csv('data/processed/plays_week_1.csv', index=False)
