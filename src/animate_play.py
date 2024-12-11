@@ -92,9 +92,9 @@ colors = {
 }
 
 position_groups = {
-    "Backs & Receivers": ["QB", "WR", "RB", "TE"],
+    "Backs & Receivers": ["QB", "WR", "RB", "FB", "TE"],
     "Offensive Line":    ["C", "G", "T"],
-    "Defense":           ["NT", "CB", "DT", "DE", "ILB", "OLB", "SS", "FS"],
+    "Defense":           ["NT", "CB", "DT", "DE", "DB", "LB", "MLB", "ILB", "OLB", "SS", "FS"],
     "Football":          ["football"]
 }
 
