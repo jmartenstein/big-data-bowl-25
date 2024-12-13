@@ -24,7 +24,7 @@ def build_team_columns(df, team):
 
     for p in p_ids:
 
-        df_p_spd = get_player_speed_frame( df_presnap_frames, p )
+        df_p_spd = get_player_speed_frame( df_, p )
 
         if not df_team.empty:
             df_team = df_team.merge(df_p_spd, on=['frameId'])
@@ -55,25 +55,9 @@ def set_subplot_details(ax, df, title, set_f_id, snap_f_id, motion_f_id, shift_f
 
     return True
 
-if __name__  == '__main__':
+def plot_speed_over_time(game_id, play_id):
 
-    if (len(sys.argv) < 3):
-        print("Specify gameId and playId")
-        sys.exit(1)
-
-    try:
-        game_id = int(sys.argv[1])
-    except:
-        print("Invalid game id format")
-        sys.exit(1)
-
-    try:
-        play_id = int(sys.argv[2])
-    except:
-        print("Invalid play id format")
-
-
-    data_dir = "./data/kaggle"
+    data_dir = "../data/kaggle"
 
     tracking_prefix = data_dir + "/tracking_week_"
     plays_file = data_dir + "/plays.csv"
@@ -104,8 +88,6 @@ if __name__  == '__main__':
     offense_team = df_details[ "possessionTeam" ].values[0]
     defense_team = df_details[ "defensiveTeam" ].values[0]
 
-    print(df_details[ "playDescription" ].values[0])
-
     set_frame_id = ap.get_frame_id_for_event(df_frames, "line_set")
     snap_frame_id = ap.get_frame_id_for_event(df_frames, "ball_snap")
     motion_frame_id = ap.get_frame_id_for_event(df_frames, "man_in_motion")
@@ -128,3 +110,24 @@ if __name__  == '__main__':
 
     plt.tight_layout()
     plt.show()
+
+    return df_details[ "playDescription" ].values[0]
+
+if __name__  == '__main__':
+
+    if (len(sys.argv) < 3):
+        print("Specify gameId and playId")
+        sys.exit(1)
+
+    try:
+        game_id = int(sys.argv[1])
+    except:
+        print("Invalid game id format")
+        sys.exit(1)
+
+    try:
+        play_id = int(sys.argv[2])
+    except:
+        print("Invalid play id format")
+
+    plot_speed_over_time(game_id, play_id)
