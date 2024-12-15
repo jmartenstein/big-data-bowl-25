@@ -1,19 +1,20 @@
 import matplotlib.pyplot as plt
 import pandas as pd
+import numpy as np
 import analyze_play as ap
 import sys
 
-def get_player_speed_frame(df, player_id):
+def get_player_column(df, player_id, col_name):
 
     df_p = df[ df[ "nflId" ] == player_id ].copy()
     name = df_p[ "displayName" ].iloc[0]
 
-    df_p = df_p[[ "frameId", "s" ]]
-    df_p = df_p.rename(columns={'s': name})
+    df_p = df_p[[ "frameId", col_name ]]
+    df_p = df_p.rename(columns={col_name: name})
 
     return df_p
 
-def build_team_columns(df, team):
+def build_team_columns(df, team, column_name):
 
     # initiate dataframe for plot
     df_team = pd.DataFrame([])
@@ -24,7 +25,7 @@ def build_team_columns(df, team):
 
     for p in p_ids:
 
-        df_p_spd = get_player_speed_frame( df_, p )
+        df_p_spd = get_player_column( df_, p, column_name )
 
         if not df_team.empty:
             df_team = df_team.merge(df_p_spd, on=['frameId'])
@@ -55,9 +56,29 @@ def set_subplot_details(ax, df, title, set_f_id, snap_f_id, motion_f_id, shift_f
 
     return True
 
+def summarize_player_stats(df_team):
+
+    list_summary = []
+    index = df_team.index
+
+    for col_name, column in df_team.items():
+
+        row = { 'name': col_name,
+                'max_spd': column.max(),
+                'sum_spd': column.sum()
+              }
+        list_summary.append(row)
+        #max_spd = column.max()
+        #print(f"{col_name},{max_spd},{area}")
+
+    df_summary = pd.DataFrame(list_summary)
+    df_summary.sort_values(by="sum_spd", inplace=True, ascending=False)
+    print(df_summary.to_string(index=False))
+
+
 def plot_speed_over_time(game_id, play_id):
 
-    data_dir = "../data/kaggle"
+    data_dir = "data/kaggle"
 
     tracking_prefix = data_dir + "/tracking_week_"
     plays_file = data_dir + "/plays.csv"
@@ -100,13 +121,19 @@ def plot_speed_over_time(game_id, play_id):
 
     fig, axes = plt.subplots(nrows=2, ncols=1, figsize=(10,8))
 
-    df_offense = build_team_columns(df_presnap_frames, offense_team)
+    column = "s"
+    df_offense = build_team_columns(df_presnap_frames, offense_team, column)
     set_subplot_details(axes[0], df_offense, f"Offense: {offense_team}",
                         set_frame_id, snap_frame_id, motion_frame_id, shift_frame_id)
 
-    df_defense = build_team_columns(df_presnap_frames, defense_team)
+    df_defense = build_team_columns(df_presnap_frames, defense_team, column)
     set_subplot_details(axes[1], df_defense, f"Defense: {defense_team}",
                         set_frame_id, snap_frame_id, motion_frame_id, shift_frame_id)
+
+    print("Offense:")
+    summarize_player_stats(df_offense)
+    print("\nDefense:")
+    summarize_player_stats(df_defense)
 
     plt.tight_layout()
     plt.show()
@@ -130,4 +157,5 @@ if __name__  == '__main__':
     except:
         print("Invalid play id format")
 
-    plot_speed_over_time(game_id, play_id)
+    details = plot_speed_over_time(game_id, play_id)
+    print(details)
