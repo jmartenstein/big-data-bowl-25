@@ -283,14 +283,20 @@ if __name__  == '__main__':
 
     # is this play a run, pass or other?
 
+    snap_frame_id = get_frame_id_for_event(df_tr, "ball_snap")
+
     pass_forward_frame_id = get_frame_id_for_event(df_tr, "pass_forward")
     pass_shovel_frame_id = get_frame_id_for_event(df_tr, "pass_shovel")
     handoff_frame_id = get_frame_id_for_event(df_tr, "handoff")
+    run_frame_id = get_frame_id_for_event(df_tr, "run")
 
     # check if this is a pass play
     if (handoff_frame_id > 0):
         is_run_play = True
         frame_id = handoff_frame_id
+    elif (run_frame_id > 0):
+        is_run_play = True
+        frame_id = run_frame_id
     elif (pass_forward_frame_id > 0):
         is_pass_play = True
         frame_id = pass_forward_frame_id
@@ -300,13 +306,22 @@ if __name__  == '__main__':
 
     df_frame = df_tr[ df_tr["frameId"] == frame_id ]
     qb_player_ids = find_player_ids_by_position(df_frame, "QB")
-    passer_id = qb_player_ids[0]
 
+    # we can't assumes that there's only 1 quarterback on the play; see play
+    # game_id: 2022091100, play_id: 2114 for an example where there are two
+    # quarterbacks on the field (Taysom Hill and Jameis Winston)
+    #passer_id = qb_player_ids[0]
+
+    # has the football 1 second after the snap
+    after_snap_frame_id = snap_frame_id + 10
+    passer_id = find_player_id_by_closest_to_football( df_tr, after_snap_frame_id )
+
+    # if it's a pass play, find the nearest reciever; if it's a run play
+    # find the player nearest to the ball 0.5 seconds after hand off
     if is_pass_play:
         ballcarrier_id = find_targeted_receiver_id( df_tr, df_play_details )
     else:
-        rb_ids = find_player_ids_by_position( df_frame, "RB" )
-        ballcarrier_id = rb_ids[0]
+        ballcarrier_id = find_player_id_by_closest_to_football( df_tr, frame_id+5 )
 
     passer_name = get_player_name_by_id( df_players, passer_id )
     if ballcarrier_id != 0:
@@ -318,7 +333,7 @@ if __name__  == '__main__':
     if is_pass_play:
         events = [ "pass_forward", "pass_arrived" ]
     elif is_run_play:
-        events = [ "handoff", "tackle" ]
+        events = [ "handoff", "run", "tackle" ]
 
     print(f"Pre-snap analysis")
 
