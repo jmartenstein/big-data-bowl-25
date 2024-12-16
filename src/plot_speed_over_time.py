@@ -14,6 +14,13 @@ def get_player_column(df, player_id, col_name):
 
     return df_p
 
+def get_player_list_sorted_by_speed(df):
+
+    player_speeds = df.groupby('nflId')['s'].sum()
+    player_speeds.sort_values(ascending=False, inplace=True)
+
+    return player_speeds.index
+
 def build_team_columns(df, team, column_name):
 
     # initiate dataframe for plot
@@ -21,7 +28,7 @@ def build_team_columns(df, team, column_name):
 
     # get list of unique team player id's in frame
     df_ = df[ df[ "club" ] == team ]
-    p_ids = df_[ "nflId" ].unique()
+    p_ids = get_player_list_sorted_by_speed(df_)
 
     for p in p_ids:
 
@@ -68,8 +75,6 @@ def summarize_player_stats(df_team):
                 'sum_spd': column.sum()
               }
         list_summary.append(row)
-        #max_spd = column.max()
-        #print(f"{col_name},{max_spd},{area}")
 
     df_summary = pd.DataFrame(list_summary)
     df_summary.sort_values(by="sum_spd", inplace=True, ascending=False)
@@ -104,10 +109,10 @@ def plot_speed_over_time(game_id, play_id):
     set_subplot_details(axes[1], df_defense, f"Defense: {defense_team}",
                         set_frame_id, snap_frame_id, motion_frame_id, shift_frame_id)
 
-    print("Offense:")
-    summarize_player_stats(df_offense)
-    print("\nDefense:")
-    summarize_player_stats(df_defense)
+    #print("Offense:")
+    #summarize_player_stats(df_offense)
+    #print("\nDefense:")
+    #summarize_player_stats(df_defense)
 
     plt.tight_layout()
     plt.show()
