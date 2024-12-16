@@ -11,7 +11,41 @@ import scipy.spatial as sp
 
 import sys
 
+### CONSTANTS ###
+
+DATA_DIR = "data/kaggle"
+
 ### FUNCTIONS ###
+
+def load_tracking_from_game_and_play(game_id, play_id):
+
+    tracking_prefix = DATA_DIR + "/tracking_week_"
+    plays_file = DATA_DIR + "/plays.csv"
+    games_file = DATA_DIR + "/games.csv"
+
+    df_game = pd.read_csv(games_file)
+
+    try:
+        week_number = df_game[(df_game["gameId"] == game_id)]["week"].values[0]
+    except:
+        print("Could not find week for game")
+        sys.exit(1)
+
+    tracking_file = tracking_prefix + str(week_number) + ".csv"
+    df_tr = pd.read_csv(tracking_file)
+    df_ps = pd.read_csv(plays_file)
+
+    df_frames = df_tr[
+        (df_tr["playId"] == play_id) & \
+        (df_tr["gameId"] == game_id)
+    ].copy()
+
+    df_details = df_ps[
+        (df_ps["playId"] == play_id) & \
+        (df_ps["gameId"] == game_id)
+    ]
+
+    return df_frames, df_details
 
 def get_frame_id_for_event(df, event_name):
     frame_id = -1
@@ -114,9 +148,6 @@ def find_player_id_by_closest_to_football(df, frame_id):
         (df['club'] == 'football') & \
         (df['frameId'] == frame_id)
     ]
-
-    frame_df = df[ (df['frameId'] == frame_id ) ]
-    #print(frame_df)
 
     if football_row.empty:
         raise ValueError(f"No football found at frame: {frame_id}")
@@ -225,20 +256,9 @@ if __name__  == '__main__':
         print("Invalid play id format")
         sys.exit(1)
 
-    tracking_file = "data/kaggle/tracking_week_1.csv"
-    df_tracking = pd.read_csv(tracking_file)
-
-    df_tracking_unmerged = df_tracking[
-        (df_tracking["playId"] == play_id) & \
-        (df_tracking["gameId"] == game_id)
-    ].copy()
+    df_tracking_unmerged, df_play_details = load_tracking_from_game_and_play(
+        game_id, play_id)
     df_tracking_unmerged[[ "nflId" ]] = df_tracking_unmerged[[ "nflId" ]].fillna(-1)
-
-    df_plays = pd.read_csv("data/kaggle/plays.csv")
-    df_play_details = df_plays[
-        (df_plays["playId"] == play_id) & \
-        (df_plays["gameId"] == game_id)
-    ]
 
     df_player_plays = pd.read_csv("data/kaggle/player_play.csv")
     df_player_play_details = df_player_plays[
@@ -289,6 +309,7 @@ if __name__  == '__main__':
     pass_shovel_frame_id = get_frame_id_for_event(df_tr, "pass_shovel")
     handoff_frame_id = get_frame_id_for_event(df_tr, "handoff")
     run_frame_id = get_frame_id_for_event(df_tr, "run")
+    sack_frame_id = get_frame_id_for_event(df_tr, "qb_sack")
 
     # check if this is a pass play
     if (handoff_frame_id > 0):
@@ -303,24 +324,25 @@ if __name__  == '__main__':
     elif (pass_shovel_frame_id > 0):
         is_pass_play = True
         frame_id = pass_shovel_frame_id
+    elif (sack_frame_id > 0):
+        frame_id = sack_frame_id
 
     df_frame = df_tr[ df_tr["frameId"] == frame_id ]
-    qb_player_ids = find_player_ids_by_position(df_frame, "QB")
 
     # we can't assumes that there's only 1 quarterback on the play; see play
     # game_id: 2022091100, play_id: 2114 for an example where there are two
     # quarterbacks on the field (Taysom Hill and Jameis Winston)
-    #passer_id = qb_player_ids[0]
 
     # has the football 1 second after the snap
     after_snap_frame_id = snap_frame_id + 10
     passer_id = find_player_id_by_closest_to_football( df_tr, after_snap_frame_id )
+    ballcarrier_id = 0
 
     # if it's a pass play, find the nearest reciever; if it's a run play
     # find the player nearest to the ball 0.5 seconds after hand off
     if is_pass_play:
         ballcarrier_id = find_targeted_receiver_id( df_tr, df_play_details )
-    else:
+    elif is_run_play:
         ballcarrier_id = find_player_id_by_closest_to_football( df_tr, frame_id+5 )
 
     passer_name = get_player_name_by_id( df_players, passer_id )

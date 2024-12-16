@@ -78,33 +78,7 @@ def summarize_player_stats(df_team):
 
 def plot_speed_over_time(game_id, play_id):
 
-    data_dir = "data/kaggle"
-
-    tracking_prefix = data_dir + "/tracking_week_"
-    plays_file = data_dir + "/plays.csv"
-    games_file = data_dir + "/games.csv"
-
-    df_game = pd.read_csv(games_file)
-
-    try:
-        week_number = df_game[(df_game["gameId"] == game_id)]["week"].values[0]
-    except:
-        print("Could not find week for game")
-        sys.exit(1)
-
-    tracking_file = tracking_prefix + str(week_number) + ".csv"
-    df_tr = pd.read_csv(tracking_file)
-    df_ps = pd.read_csv(plays_file)
-
-    df_frames = df_tr[
-        (df_tr["playId"] == play_id) & \
-        (df_tr["gameId"] == game_id)
-    ].copy()
-
-    df_details = df_ps[
-        (df_ps["playId"] == play_id) & \
-        (df_ps["gameId"] == game_id)
-    ]
+    df_frames, df_details = ap.load_tracking_from_game_and_play(game_id, play_id)
 
     offense_team = df_details[ "possessionTeam" ].values[0]
     defense_team = df_details[ "defensiveTeam" ].values[0]
