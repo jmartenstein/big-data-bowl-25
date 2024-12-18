@@ -4,6 +4,8 @@ import numpy as np
 import analyze_play as ap
 import sys
 
+ap.DATA_DIR = 'data/kaggle'
+
 def get_player_column(df, player_id, col_name):
 
     df_p = df[ df[ "nflId" ] == player_id ].copy()
@@ -21,25 +23,30 @@ def get_player_list_sorted_by_speed(df):
 
     return player_speeds.index
 
-def build_team_columns(df, team, column_name):
+def build_player_columns(df, col_name, p_list):
 
     # initiate dataframe for plot
-    df_team = pd.DataFrame([])
+    df_players = pd.DataFrame([])
+
+    for p in p_list:
+
+        df_p_col = get_player_column( df, p, col_name )
+
+        if not df_players.empty:
+            df_players = df_players.merge(df_p_col, on=['frameId'])
+        else:
+            df_players = df_p_col
+
+    df_players.set_index('frameId', inplace=True)
+
+    return df_players
+
+def build_team_columns(df, team, column_name):
 
     # get list of unique team player id's in frame
     df_ = df[ df[ "club" ] == team ]
     p_ids = get_player_list_sorted_by_speed(df_)
-
-    for p in p_ids:
-
-        df_p_spd = get_player_column( df_, p, column_name )
-
-        if not df_team.empty:
-            df_team = df_team.merge(df_p_spd, on=['frameId'])
-        else:
-            df_team = df_p_spd
-
-    df_team.set_index('frameId', inplace=True)
+    df_team = build_player_columns( df_, column_name, p_ids )
 
     return df_team
 
@@ -63,7 +70,7 @@ def set_subplot_details(ax, df, title, set_f_id, snap_f_id, motion_f_id, shift_f
 
     return True
 
-def summarize_player_stats(df_team):
+def summarize_speed_over_time(df_team):
 
     list_summary = []
     index = df_team.index
@@ -80,6 +87,26 @@ def summarize_player_stats(df_team):
     df_summary.sort_values(by="sum_spd", inplace=True, ascending=False)
     print(df_summary.to_string(index=False))
 
+def plot_player_speed_over_time(game_id, play_id, player_list):
+
+    df_f, df_d = ap.load_tracking_from_game_and_play(game_id, play_id)
+
+    set_frame_id = ap.get_frame_id_for_event(df_f, "line_set")
+    snap_frame_id = ap.get_frame_id_for_event(df_f, "ball_snap")
+
+    df_presnap = df_f[ ( df_f[ "frameId" ] >= set_frame_id ) & \
+                       ( df_f[ "frameId" ] <= snap_frame_id) & \
+                       ( df_f[ "nflId" ].isin( player_list ) )
+                     ]
+
+    df_players = build_player_columns(df_presnap, "s", player_list)
+    df_players.plot.line()
+
+    plt.xlabel("Frame")
+    plt.ylabel("Speed")
+    plt.show()
+
+    return df_d[ "playDescription" ].values[0]
 
 def plot_speed_over_time(game_id, play_id):
 
@@ -136,5 +163,15 @@ if __name__  == '__main__':
     except:
         print("Invalid play id format")
 
-    details = plot_speed_over_time(game_id, play_id)
+    try:
+        players_list = sys.argv[3].split(",")
+    except:
+        players_list = []
+
+    players = list(map(int, players_list))
+    if not players:
+        details = plot_speed_over_time(game_id, play_id)
+    else:
+        details = plot_player_speed_over_time(game_id, play_id, players)
+
     print(details)
