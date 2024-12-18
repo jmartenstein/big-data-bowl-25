@@ -13,7 +13,8 @@ import sys
 
 ### CONSTANTS ###
 
-DATA_DIR = "/kaggle/input/nfl-big-data-bowl-2025"
+#DATA_DIR = "/kaggle/input/nfl-big-data-bowl-2025"
+DATA_DIR = 'data/kaggle'
 
 ### FUNCTIONS ###
 
