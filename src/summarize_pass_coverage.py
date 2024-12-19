@@ -22,9 +22,6 @@ if __name__  == '__main__':
         print("Invalid play id format")
         sys.exit(1)
 
-    df_tr, df_pd = ap.load_tracking_from_game_and_play( game_id, play_id )
-    df_tr[[ "nflId" ]] = df_tr[[ "nflId" ]].fillna(-1)
-
     df_pp_ = pd.read_csv("data/kaggle/player_play.csv")
     df_pp_ = df_pp_[ ( df_pp_[ "playId" ] == play_id ) & \
                     ( df_pp_[ "gameId" ] == game_id )
