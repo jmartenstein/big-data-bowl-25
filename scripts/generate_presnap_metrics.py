@@ -5,92 +5,113 @@ import numpy as np
 
 import sys
 
-# get array of games in week 1
-df_gs = pd.read_csv("data/kaggle/games.csv")
-df_gs_week1 = df_gs[ df_gs["week"] == 1 ]
-list_games_week1 = df_gs_week1[ "gameId" ].unique()
+### FUNCTIONS
 
-# load player play data for week1
-df_ps = pd.read_csv("data/kaggle/plays.csv")
-df_ps_week1 = df_ps[ ( df_ps["gameId"].isin(list_games_week1) ) ].copy()
+def get_max_team_speed_per_play(df, game_id, player_id, s_team):
 
-# load player play data, limit to week 1
-df_tr = pd.read_csv("data/kaggle/tracking_week_1.csv")
-df_tr_week1 = df_tr[ df_tr["gameId"].isin(list_games_week1) ]
+    # get max speed for this play
+    max_row = df[
+        ( df['gameId'] == game_id ) & \
+        ( df['playId'] == play_id ) & \
+        ( df['club'] == s_team )
+    ]
+    if len(max_row) > 0:
+        max_speed = max_row['s'].values[0]
+    else:
+        print(f"WARN: No max speed found for {game_id}, {play_id}, {s_team}")
+        max_speed = 0
 
-# run group by to find max speed for each team per play
-df_max_speed = df_tr_week1.groupby(['gameId', 'playId', 'club'],
-                                   as_index = False)[['s']].max()
+    return max_speed
 
-#print(df_max_speed[:20])
-#sys.exit(0)
+start_week = 1
+end_week = 6
 
-count = 0
+df_all_weeks = pd.DataFrame([])
 
-# can this be replaced with an group_by / reduce?
-for idx, row in df_ps_week1.iterrows():
+for w in range(start_week, end_week+1):
 
-    game_id = row[ "gameId" ]
-    play_id = row[ "playId" ]
+    print(f"Analyzing Week {w}")
 
-    offense = row[ "possessionTeam" ]
-    defense = row[ "defensiveTeam" ]
+    # get array of games in week 1
+    df_gs = pd.read_csv("data/kaggle/games.csv")
+    df_gs_weeks = df_gs[ df_gs["week"] == w ]
+    list_games_weeks = df_gs_weeks[ "gameId" ].unique()
 
-    max_offense_speed = df_max_speed[
-        ( df_max_speed['gameId'] == game_id ) & \
-        ( df_max_speed['playId'] == play_id ) & \
-        ( df_max_speed['club'] == offense )
-    ][['s']].values[0]
-    df_ps_week1.loc[ idx, "maxOffenseSpeed" ] = max_offense_speed
+    # load player play data for week1
+    df_ps = pd.read_csv("data/kaggle/plays.csv")
+    df_ps_weeks = df_ps[ ( df_ps["gameId"].isin(list_games_weeks) ) ].copy()
 
-    max_defense_speed = df_max_speed[
-        ( df_max_speed['gameId'] == game_id ) & \
-        ( df_max_speed['playId'] == play_id ) & \
-        ( df_max_speed['club'] == defense )
-    ][['s']].values[0]
-    df_ps_week1.loc[ idx, "maxDefenseSpeed" ] = max_defense_speed
+    # load player play data, limit to week 1
+    df_tr = pd.read_csv(f"data/kaggle/tracking_week_{w}.csv")
+    df_tr_weeks = df_tr[ df_tr["gameId"].isin(list_games_weeks) ]
 
-    df_play_tr = df_tr_week1[ ( df_tr_week1[ "gameId" ] == game_id ) & \
-                              ( df_tr_week1[ "playId" ] == play_id )
-                            ]
+    # run group by to find max speed for each team per play
+    df_max_speed = df_tr_weeks.groupby(['gameId', 'playId', 'club'],
+                                       as_index = False)[['s']].max()
 
-    set_frame_id = ap.get_frame_id_for_event(df_play_tr, "line_set")
-    snap_frame_id = ap.get_frame_id_for_event(df_play_tr, "ball_snap")
+    count = 0
+    print(f"Plays: {len(df_ps_weeks)}")
+    print(f"Speed summary: {df_max_speed.shape}")
 
-    df_pre_snap = df_play_tr[ ( df_play_tr[ "frameId" ] >= set_frame_id ) & \
-                              ( df_play_tr[ "frameId" ] <= snap_frame_id )
-                            ]
+    # can this be replaced with an group_by / reduce?
+    for idx, row in df_ps_weeks.iterrows():
 
-    df_offense_pre_snap = df_pre_snap[ df_pre_snap[ "club" ] == offense ]
-    offense_dist = ap.get_distance_traveled_from_player_frames(df_offense_pre_snap)
-    df_ps_week1.loc[ idx, "offenseDistanceTraveled" ] = offense_dist
+        game_id = row[ "gameId" ]
+        play_id = row[ "playId" ]
 
-    df_defense_pre_snap = df_pre_snap[ df_pre_snap[ "club" ] == defense ]
-    defense_dist = ap.get_distance_traveled_from_player_frames(df_defense_pre_snap)
-    df_ps_week1.loc[ idx, "defenseDistanceTraveled" ] = defense_dist
+        offense = row[ "possessionTeam" ]
+        defense = row[ "defensiveTeam" ]
 
-    df_ps_week1.loc[ idx, "elapsedTime" ] = (snap_frame_id - set_frame_id) / 10
+        max_offense_speed = get_max_team_speed_per_play(
+            df_max_speed, game_id, play_id, offense)
+        df_ps_weeks.loc[ idx, "maxOffenseSpeed" ] = max_offense_speed
 
-    # the for loop is slow, print a progress bar; maybe we can use a group_by
-    # here instead?
-    count += 1
-    if (count % 100) == 0:
-        print('.', end='', flush=True)
+        max_defense_speed = get_max_team_speed_per_play(
+            df_max_speed, game_id, play_id, defense)
+        df_ps_weeks.loc[ idx, "maxDefenseSpeed" ] = max_defense_speed
 
-print()
-print(df_ps_week1.columns.values)
+        df_play_tr = df_tr_weeks[ ( df_tr_weeks[ "gameId" ] == game_id ) & \
+                                  ( df_tr_weeks[ "playId" ] == play_id )
+                                ]
 
-output_features = [ "gameId",
-                    "playId",
-                    "passLength",
-                    "passResult",
-                    "penaltyYards",
-                    "yardsGained",
-                    "yardsToGo",
-                    "maxOffenseSpeed",
-                    "maxDefenseSpeed",
-                    "offenseDistanceTraveled",
-                    "defenseDistanceTraveled",
-                    "elapsedTime" ]
+        set_frame_id = ap.get_frame_id_for_event(df_play_tr, "line_set")
+        snap_frame_id = ap.get_frame_id_for_event(df_play_tr, "ball_snap")
 
-df_ps_week1[ output_features ].to_csv('data/processed/plays_week_1.csv', index=False)
+        df_pre_snap = df_play_tr[ ( df_play_tr[ "frameId" ] >= set_frame_id ) & \
+                                  ( df_play_tr[ "frameId" ] <= snap_frame_id )
+                                ]
+
+        df_offense_pre_snap = df_pre_snap[ df_pre_snap[ "club" ] == offense ]
+        offense_dist = ap.get_distance_traveled_from_player_frames(df_offense_pre_snap)
+        df_ps_weeks.loc[ idx, "offenseDistanceTraveled" ] = offense_dist
+
+        df_defense_pre_snap = df_pre_snap[ df_pre_snap[ "club" ] == defense ]
+        defense_dist = ap.get_distance_traveled_from_player_frames(df_defense_pre_snap)
+        df_ps_weeks.loc[ idx, "defenseDistanceTraveled" ] = defense_dist
+
+        df_ps_weeks.loc[ idx, "elapsedTime" ] = (snap_frame_id - set_frame_id) / 10
+
+        # the for loop is slow, print a progress bar; maybe we can use a group_by
+        # here instead?
+        count += 1
+        if (count % 100) == 0:
+            print('.', end='', flush=True)
+
+    print()
+
+    output_features = [ "gameId",
+                        "playId",
+                        "passLength",
+                        "passResult",
+                        "penaltyYards",
+                        "yardsGained",
+                        "yardsToGo",
+                        "maxOffenseSpeed",
+                        "maxDefenseSpeed",
+                        "offenseDistanceTraveled",
+                        "defenseDistanceTraveled",
+                        "elapsedTime" ]
+
+    df_all_weeks = pd.concat( [ df_all_weeks, df_ps_weeks ] )
+
+df_all_weeks[ output_features ].to_csv('data/processed/plays_presnap_summary.csv', index=False)
