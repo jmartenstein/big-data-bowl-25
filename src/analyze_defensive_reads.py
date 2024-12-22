@@ -4,23 +4,26 @@ import sys
 
 # CONSTANTS
 
-DATA_DIR = "data/kaggle"
+RAW_DATA_DIR = "data/kaggle"
+PROCESSED_DATA_DIR = "data/processed"
 
 # FUNCTIONS
 
 def get_game_ids_by_week(week):
-    df_ = pd.read_csv(f"{DATA_DIR}/games.csv")
+
+    df_ = pd.read_csv(f"{RAW_DATA_DIR}/games.csv")
     df = df_[ df_[ "week" ] == week ]
     return df[ "gameId" ].unique()
 
 def get_player_plays_from_game(game_id, player_id):
-    df_part_ = df_pp[ ( df_pp[ "gameId" ] == game_id ) & \
-                      ( df_pp[ "nflId" ] == player_id ) ]
-    return df_part_[ "playId" ].unique()
+
+    df_ = df_pp[ ( df_pp[ "gameId" ] == game_id ) & \
+                  ( df_pp[ "nflId" ] == player_id ) ]
+    return df_[ "playId" ].unique()
 
 def get_game_id_by_player_and_week( p_id, week ):
 
-    df_ = pd.read_csv(f"{DATA_DIR}/player_play.csv")
+    df_ = pd.read_csv(f"{RAW_DATA_DIR}/player_play.csv")
 
     list_week_games = get_game_ids_by_week( week )
     df_plays_ = df_ [ ( df_[ "gameId" ].isin( list_week_games ) ) & \
@@ -74,17 +77,27 @@ else:
 pp_filename = "player_play.csv"
 ps_filename = "players.csv"
 p_filename  = "plays.csv"
+pt_filename = "plays_and_targets.csv"
 
 # load data from csv
-df_pp = pd.read_csv(f"{DATA_DIR}/{pp_filename}")
-df_ps = pd.read_csv(f"{DATA_DIR}/{ps_filename}")
-df_p  = pd.read_csv(f"{DATA_DIR}/{p_filename}")
+df_pp = pd.read_csv(f"{RAW_DATA_DIR}/{pp_filename}")
+df_ps = pd.read_csv(f"{RAW_DATA_DIR}/{ps_filename}")
+df_p  = pd.read_csv(f"{RAW_DATA_DIR}/{p_filename}")
+df_pt = pd.read_csv(f"{PROCESSED_DATA_DIR}/{pt_filename}")
 
-# get frame for all of the plays this player  participated in?
-df_part_ = df_pp[ ( df_pp[ "gameId" ].isin( game_ids ) ) & \
-                  ( df_pp[ "nflId" ] == player_id ) ]
+# merge the play target dataframe with the player play dataframe
+df_merged = df_pp.merge( df_pt, on=[ 'gameId', 'playId' ] )
+
+# get frame for all of the plays this player  participated in
+df_part_ = df_merged[ ( df_merged[ "gameId" ].isin( game_ids ) ) & \
+                      ( df_merged[ "nflId" ] == player_id ) ]
 s_team = df_part_.iloc[0]["teamAbbr"]
 list_played_plays = df_part_[ "playId" ].unique()
+
+# how many plays were offensive success vs. defensive success? (assign a score)
+defense_target_sum = df_part_[ 'defenseTarget' ].sum()
+offense_target_sum = df_part_[ 'offenseTarget' ].sum()
+target_score = -df_part_['targetDiff' ].sum()
 
 # make a list of the defensive plays that this team ran in the game
 df_def_ = df_p[ ( df_p[ "defensiveTeam" ] == s_team ) & \
@@ -113,6 +126,10 @@ if set(list_played_plays).issubset(list_all_def_plays):
         print(f"Found games: {game_ids}")
     print(f"Participated in {participated_play_count} out " \
           f"of {total_def_play_count} defensive plays")
+    print(f"Found {defense_target_sum} successful defensive plays " \
+          f"and {offense_target_sum} successful offensive plays")
+    print(f"Defensive Score: {target_score}; avg def success per play: " \
+          f"{round(defense_target_sum / participated_play_count,2)}")
 
 else:
     print("No defensive plays found")
@@ -120,4 +137,3 @@ else:
 
 # how many times did this player initate a pre-snap defensive movement?
 
-# how many plays were offensive success vs. defensive success? (assign a score)
