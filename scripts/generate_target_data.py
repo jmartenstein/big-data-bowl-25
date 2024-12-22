@@ -9,24 +9,17 @@ import numpy as np
 
 import analyze_play as ap
 
-# get array of games in week 1
-df_gs = pd.read_csv("data/kaggle/games.csv")
-df_gs_w1 = df_gs[ df_gs["week"] == 1 ]
-list_gs_w1 = df_gs_w1[ "gameId" ].unique()
-
 # load player play data for week1
-df_ps = pd.read_csv("data/processed/plays_week_1.csv")
-df_total_ps_w1 = df_ps[ ( df_ps["gameId"].isin(list_gs_w1) ) ].copy()
+df_ps = pd.read_csv("data/processed/plays_presnap_summary.csv")
 
 # print total number of play
-num_plays = len(df_total_ps_w1)
+num_plays = len(df_ps)
 
 # remove plays with penalties
-df_valid_ps_w1 = df_total_ps_w1[ df_total_ps_w1[ "penaltyYards" ].isnull() ].copy()
+df_valid_ps_w1 = df_ps[ df_ps[ "penaltyYards" ].isnull() ].copy()
 penalties_count = num_plays - len(df_valid_ps_w1)
 print(f"Total of {num_plays} plays found; removing {penalties_count} "
       f"plays with penalty yardage")
-#print(df_nonpenalties_w1.shape)
 print()
 
 threshold = 5
@@ -35,7 +28,6 @@ df_run_plays = df_valid_ps_w1[ ( df_valid_ps_w1[ "passLength" ].isnull() ) & \
 df_first_down_conversions = df_valid_ps_w1[
     df_valid_ps_w1[ "yardsGained" ] > df_valid_ps_w1[ "yardsToGo" ]
 ]
-#print(f"  Found {len(df_first_down_conversions)} plays with first down conversions")
 
 df_offense_success = df_first_down_conversions.combine_first(df_run_plays)
 
@@ -128,4 +120,4 @@ df_targets_week1 = df_concat[ feature_columns ]
 
 print(f"Writing data with shape {df_targets_week1.shape} to csv file")
 
-df_targets_week1.to_csv('data/processed/plays_and_targets_week_1.csv', index=False)
+df_targets_week1.to_csv('data/processed/plays_and_targets.csv', index=False)
