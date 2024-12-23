@@ -106,7 +106,7 @@ list_all_def_plays = df_def_[ "playId" ].unique()
 
 if all_players:
 
-    print("No player_id specified, pulling all defensive players from **TEAM**")
+    print("No player_id specified, pulling all defensive players from game")
     player_ids = []
 
 else:
