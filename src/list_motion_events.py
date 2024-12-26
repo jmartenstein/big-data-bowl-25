@@ -11,6 +11,25 @@ ap.DATA_DIR = "data/kaggle"
 
 ### FUNCTIONS ###
 
+def get_opposite_dir(direction):
+
+    opposite = ""
+
+    if direction == "right":
+        opposite = "left"
+    elif direction == "left":
+        opposite = "right"
+    elif direction == "up":
+        opposite = "down"
+    elif direction == "down":
+        opposite = "up"
+    elif direction == "forward":
+        opposite = "back"
+    elif direction == "back":
+        opposite = "forward"
+
+    return opposite
+
 def get_min_frame_from_events( df, l_events ):
     min_frame = 500
     for e in l_events:
@@ -52,20 +71,29 @@ def get_general_direction_and_offset(vector_x, vector_y, play_direction):
     f_x_neg = ( vector_x < abs_vector_x )
     f_y_neg = ( vector_y < abs_vector_y )
 
+    angle_rad = math.atan2( vector_y, vector_x )
+    angle_deg = math.degrees(angle_rad)
     general_dir = ""
 
     if f_horizontal:
         if f_x_neg:
-            general_dir = "abs_left"
+            general_dir = "left"
+            if angle_deg < 0:
+                offset = 180 + angle_deg
+            else:
+                offset = 180 - angle_deg
         else:
-            general_dir = "abs_right"
+            general_dir = "right"
+            offset = angle_deg
     else:
         if f_y_neg:
-            general_dir = "abs_down"
+            general_dir = "down"
+            offset = 90 + angle_deg
         else:
-            general_dir = "abs_up"
+            general_dir = "up"
+            offset = 90 - angle_deg
 
-    return (general_dir, 0.0)
+    return (general_dir, offset)
 
 def get_motion_event_frames_by_player(df, p_id, t_speed, t_time):
 
@@ -145,6 +173,7 @@ for p in p_ids:
                     ( df_pp[ "nflId" ] == p ) ]
 
     team = row_pp[ "teamAbbr" ].values[0]
+    name = ap.get_player_name_by_id(df_pre, p)
 
     for l in range(len(t_frames)):
 
@@ -158,22 +187,33 @@ for p in p_ids:
         end_row = get_tracking_info_for_player_frame( df_pre, p, f_end )
 
         s_play_dir = start_row["playDirection"].values[0]
+        defense_team = df_d["defensiveTeam"].values[0]
 
         vector_x = end_row["x"].values[0] - start_row["x"].values[0]
         vector_y = end_row["y"].values[0] - start_row["y"].values[0]
 
         motion_dir, dir_offset = get_general_direction_and_offset(vector_x, vector_y, s_play_dir)
 
+        if abs(dir_offset) > 45:
+            print(f"WARN: {name:17} ({p}): {f_start:3} - {f_end:3}; {motion_dir:6} {dir_offset}")
+
         total_distance = math.sqrt((vector_x ** 2) + (vector_y ** 2))
         abs_speed = total_distance / motion_time
 
-        l_motions.append( [ game_id, play_id, p, team, motion_idx, f_start, f_end,
-                            vector_x, vector_y, motion_dir, dir_offset, s_play_dir, total_distance,
+        is_defense = (defense_team == team)
+
+        if is_defense:
+            team_dir = get_opposite_dir(s_play_dir)
+        else:
+            team_dir = s_play_dir
+
+        l_motions.append( [ game_id, play_id, p, team, is_defense, motion_idx, f_start, f_end,
+                            vector_x, vector_y, motion_dir, dir_offset, team_dir, total_distance,
                             abs_speed ] )
         motion_idx += 1
 
-columns = [ "gameId", "playId", "nflId", "teamAbbr", "motionEventId", "startFrameId",
-            "endFrameId", "vectorX", "vectorY", "motionDir", "dirOffest", "playDir", "totalDistance",
+columns = [ "gameId", "playId", "nflId", "teamAbbr", "isDefense", "motionEventId", "startFrameId",
+            "endFrameId", "vectorX", "vectorY", "motionDir", "dirOffest", "teamDir", "totalDistance",
             "absSpeed" ]
 df_out = pd.DataFrame( l_motions, columns=columns )
 df_out.columns
