@@ -45,7 +45,8 @@ def get_game_ids_by_player( p_id ):
 
     for w in range(week_start, week_end + 1):
         game = get_game_id_by_player_and_week( p_id, w )
-        list_game_ids.append( game )
+        if game > 0:
+            list_game_ids.append( game )
 
     return list_game_ids
 
@@ -86,54 +87,78 @@ df_p  = pd.read_csv(f"{RAW_DATA_DIR}/{p_filename}")
 df_pt = pd.read_csv(f"{PROCESSED_DATA_DIR}/{pt_filename}")
 
 # merge the play target dataframe with the player play dataframe
-df_merged = df_pp.merge( df_pt, on=[ 'gameId', 'playId' ] )
+# AND the play dataframe
+df_mp = df_pp.merge( df_pt, on=[ 'gameId', 'playId' ] )
+df_mt = df_p.merge( df_pt, on=[ 'gameId', 'playId' ] )
 
-# get frame for all of the plays this player  participated in
-df_part_ = df_merged[ ( df_merged[ "gameId" ].isin( game_ids ) ) & \
-                      ( df_merged[ "nflId" ] == player_id ) ]
-s_team = df_part_.iloc[0]["teamAbbr"]
-list_played_plays = df_part_[ "playId" ].unique()
+print(f"Found games: {game_ids}")
 
-# how many plays were offensive success vs. defensive success? (assign a score)
-defense_target_sum = df_part_[ 'defenseTarget' ].sum()
-offense_target_sum = df_part_[ 'offenseTarget' ].sum()
-target_score = -df_part_['targetDiff' ].sum()
+l_players = []
 
-# make a list of the defensive plays that this team ran in the game
-df_def_ = df_p[ ( df_p[ "defensiveTeam" ] == s_team ) & \
-                ( df_p[ "gameId" ].isin( game_ids ) ) ]
-list_all_def_plays = df_def_[ "playId" ].unique()
+for g in game_ids:
 
-if all_players:
+    # get frame for all of the plays this player participated in
+    df_part_ = df_mp[ ( df_mp[ "gameId" ] == g ) & \
+                      ( df_mp[ "nflId" ] == player_id ) ]
+    if df_part_.empty:
+        print(f"WARN: Player did not participate in game {g}")
+        continue
 
-    print("No player_id specified, pulling all defensive players from game")
-    player_ids = []
+    list_played_plays = df_part_[ "playId" ].unique()
+    s_team = df_part_.iloc[0]["teamAbbr"]
 
-else:
+    # how many plays were offensive success vs. defensive success? (assign a score)
+    defense_target_sum = df_part_[ 'defenseTarget' ].sum()
+    offense_target_sum = df_part_[ 'offenseTarget' ].sum()
+    target_score = -df_part_['targetDiff' ].sum()
 
-    # pull player data based on player_id
-    row_p = df_ps[ df_ps[ "nflId" ] == player_id ]
+    # make a list of the defensive plays that this team ran in the game
+    df_team_ = df_mt[ ( df_mt[ "defensiveTeam" ] == s_team ) & \
+                      ( df_mt[ "gameId" ] == g ) ]
+    list_all_def_plays = df_team_[ "playId" ].unique()
 
-    # print player name, player position
-    print(f"{row_p['displayName'].values[0]} ({player_id}), " \
-          f"plays {row_p['position'].values[0]}")
+    # how many team plays were offense success vs. defense success?
+    team_defense_target_sum = df_team_[ 'defenseTarget' ].sum()
+    team_offense_target_sum = df_team_[ 'offenseTarget' ].sum()
+    team_target_score = -df_team_['targetDiff' ].sum()
 
-if set(list_played_plays).issubset(list_all_def_plays):
+    if all_players:
 
-    participated_play_count = len(list_played_plays)
-    total_def_play_count = len(list_all_def_plays)
-    if all_games:
-        print(f"Found games: {game_ids}")
-    print(f"Participated in {participated_play_count} out " \
-          f"of {total_def_play_count} defensive plays")
-    print(f"Found {defense_target_sum} successful defensive plays " \
-          f"and {offense_target_sum} successful offensive plays")
-    print(f"Defensive Score: {target_score}; avg def success per play: " \
-          f"{round(defense_target_sum / participated_play_count,2)}")
+        print("No player_id specified, pulling all defensive players from game")
+        player_ids = []
 
-else:
-    print("No defensive plays found")
-    sys.exit(0)
+    else:
 
-# how many times did this player initate a pre-snap defensive movement?
+        # pull player data based on player_id
+        row_p = df_ps[ df_ps[ "nflId" ] == player_id ]
+        player_name = row_p['displayName'].values[0]
+        player_pos = row_p['position'].values[0]
 
+    if set(list_played_plays).issubset(list_all_def_plays):
+
+        participated_play_count = len(list_played_plays)
+        total_def_play_count = len(list_all_def_plays)
+        defense_score_per_play = defense_target_sum / participated_play_count
+        team_defense_score_per_play = team_defense_target_sum / total_def_play_count
+
+        diff_score_per_play = defense_score_per_play - team_defense_score_per_play
+        defense_score_over_team = diff_score_per_play * participated_play_count
+
+        #if all_games:
+        #    print(f"Found games: {game_ids}")
+
+        l_players.append( [ g, player_id, player_name, player_pos, s_team, participated_play_count, total_def_play_count,
+                            defense_target_sum, offense_target_sum, target_score, defense_score_per_play,
+                            team_defense_target_sum, team_offense_target_sum, team_target_score,
+                            team_defense_score_per_play, diff_score_per_play, defense_score_over_team ] )
+
+    else:
+        print("No defensive plays found")
+
+columns = [ 'gameId', 'nflId', 'displayName', 'position', 'teamAbbr', 'playCount', 'teamPlayCount', 'successfulDefensePlays',
+            'successfulOffensePlays', 'defenseScore', 'defenseScorePerPlay', 'successfulTeamDefensePlays',
+            'successfulTeamOffensePlays', 'teamDefenseScore', 'teamDefenseScorePerPlay', 'diffScorePerPlay',
+            'defenseScoreOverTeam' ]
+df_out = pd.DataFrame( l_players, columns=columns )
+print(df_out)
+#print(df_out.to_string(index=False))
