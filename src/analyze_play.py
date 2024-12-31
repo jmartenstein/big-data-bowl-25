@@ -18,13 +18,11 @@ DATA_DIR = 'data/kaggle'
 
 ### FUNCTIONS ###
 
-def load_tracking_from_game_and_play(game_id, play_id):
+def get_tracking_file_for_week( game_id ):
 
     tracking_prefix = DATA_DIR + "/tracking_week_"
-    plays_file = DATA_DIR + "/plays.csv"
     games_file = DATA_DIR + "/games.csv"
-
-    df_game = pd.read_csv(games_file)
+    df_game = pd.read_csv( games_file )
 
     try:
         week_number = df_game[(df_game["gameId"] == game_id)]["week"].values[0]
@@ -32,21 +30,41 @@ def load_tracking_from_game_and_play(game_id, play_id):
         print("Could not find week for game")
         sys.exit(1)
 
-    tracking_file = tracking_prefix + str(week_number) + ".csv"
-    df_tr = pd.read_csv(tracking_file)
-    df_ps = pd.read_csv(plays_file)
+    return tracking_prefix + str(week_number) + ".csv"
+
+def filter_frames_by_game( df_tr, game_id ):
 
     df_frames = df_tr[
-        (df_tr["playId"] == play_id) & \
         (df_tr["gameId"] == game_id)
     ].copy()
 
-    df_details = df_ps[
-        (df_ps["playId"] == play_id) & \
-        (df_ps["gameId"] == game_id)
+    return df_frames
+
+def filter_frames_by_play( df_tr, play_id ):
+
+    df_frames = df_tr[
+        (df_tr["playId"] == play_id)
+    ].copy()
+
+    return df_frames
+
+def load_tracking_from_game_and_play( game_id, play_id ):
+
+    tracking_file = get_tracking_file_for_week( game_id )
+    plays_file = DATA_DIR + "/plays.csv"
+
+    df_plays = pd.read_csv(plays_file)
+    df_tracking = pd.read_csv(tracking_file)
+
+    df_game_frames = filter_frames_by_game( df_tracking, game_id )
+    df_play_frames = filter_frames_by_play( df_game_frames, play_id )
+
+    df_details = df_plays[
+        (df_plays["playId"] == play_id) & \
+        (df_plays["gameId"] == game_id)
     ]
 
-    return df_frames, df_details
+    return df_play_frames, df_details
 
 def get_frame_id_for_event(df, event_name):
     frame_id = -1
