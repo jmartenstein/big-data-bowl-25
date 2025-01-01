@@ -34,25 +34,6 @@ def get_motion_event_filename(game_id=''):
 
     return f"{s_prefix}.{s_date}.{s_time}.csv"
 
-def get_opposite_dir(direction):
-
-    opposite = ""
-
-    if direction == "right":
-        opposite = "left"
-    elif direction == "left":
-        opposite = "right"
-    elif direction == "up":
-        opposite = "down"
-    elif direction == "down":
-        opposite = "up"
-    elif direction == "forward":
-        opposite = "back"
-    elif direction == "back":
-        opposite = "forward"
-
-    return opposite
-
 def get_plays_from_game( game_id ):
 
     plays_file = ap.DATA_DIR + "/plays.csv"
@@ -173,7 +154,7 @@ def summarize_motion_event(df, l_frames, player_id, is_def):
     abs_speed = total_distance / motion_time
 
     if is_def:
-        team_dir = get_opposite_dir(s_play_dir)
+        team_dir = ap.get_opposite_dir(s_play_dir)
     else:
         team_dir = s_play_dir
 

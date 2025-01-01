@@ -18,6 +18,25 @@ DATA_DIR = 'data/kaggle'
 
 ### FUNCTIONS ###
 
+def get_opposite_dir(direction):
+
+    opposite = ""
+
+    if direction == "right":
+        opposite = "left"
+    elif direction == "left":
+        opposite = "right"
+    elif direction == "up":
+        opposite = "down"
+    elif direction == "down":
+        opposite = "up"
+    elif direction == "forward":
+        opposite = "back"
+    elif direction == "back":
+        opposite = "forward"
+
+    return opposite
+
 def get_tracking_file_for_week( game_id ):
 
     tracking_prefix = DATA_DIR + "/tracking_week_"
