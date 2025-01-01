@@ -13,10 +13,33 @@ import sys
 
 ### CONSTANTS ###
 
+RAW_DATA_DIR = "data/kaggle"
+PROCESSED_DATA_DIR = "data/processed"
+
 #DATA_DIR = "/kaggle/input/nfl-big-data-bowl-2025"
-DATA_DIR = 'data/kaggle'
+#DATA_DIR = 'data/kaggle'
 
 ### FUNCTIONS ###
+
+def get_defensive_players_in_game_by_team( game_id, team ):
+
+    l_defensive_players = []
+
+    df_play = pd.read_csv(f"{RAW_DATA_DIR}/plays.csv")
+    df_player_play = pd.read_csv(f"{RAW_DATA_DIR}/player_play.csv")
+
+    # find all plays where team was on defense
+    df_defensive_plays = df_play[ ( df_play[ "gameId" ] == int(game_id) ) & \
+                                  ( df_play[ "defensiveTeam" ] == team ) ]
+    l_def_plays = df_defensive_plays[ "playId" ].unique()
+
+    # get all players from team's defensive plays
+    df_players = df_player_play[ ( df_player_play[ "gameId" ] == int(game_id) ) & \
+                                 ( df_player_play[ "teamAbbr" ] == team ) & \
+                                 ( df_player_play[ "playId" ].isin(l_def_plays) ) ]
+    l_defensive_players = df_players[ "nflId" ].unique()
+
+    return l_defensive_players
 
 def get_opposite_dir(direction):
 
@@ -39,8 +62,8 @@ def get_opposite_dir(direction):
 
 def get_tracking_file_for_week( game_id ):
 
-    tracking_prefix = DATA_DIR + "/tracking_week_"
-    games_file = DATA_DIR + "/games.csv"
+    tracking_prefix = RAW_DATA_DIR + "/tracking_week_"
+    games_file = RAW_DATA_DIR + "/games.csv"
     df_game = pd.read_csv( games_file )
 
     try:
@@ -70,7 +93,7 @@ def filter_frames_by_play( df_tr, play_id ):
 def load_tracking_from_game_and_play( game_id, play_id ):
 
     tracking_file = get_tracking_file_for_week( game_id )
-    plays_file = DATA_DIR + "/plays.csv"
+    plays_file = RAW_DATA_DIR + "/plays.csv"
 
     df_plays = pd.read_csv(plays_file)
     df_tracking = pd.read_csv(tracking_file)

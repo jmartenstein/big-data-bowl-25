@@ -1,17 +1,13 @@
 import pandas as pd
+import analyze_play as ap
 import argparse
 import sys
-
-# CONSTANTS
-
-RAW_DATA_DIR = "data/kaggle"
-PROCESSED_DATA_DIR = "data/processed"
 
 # FUNCTIONS
 
 def get_game_ids_by_week(week):
 
-    df_ = pd.read_csv(f"{RAW_DATA_DIR}/games.csv")
+    df_ = pd.read_csv(f"{ap.RAW_DATA_DIR}/games.csv")
     df = df_[ df_[ "week" ] == week ]
     return df[ "gameId" ].unique()
 
@@ -23,7 +19,7 @@ def get_player_plays_from_game(game_id, player_id):
 
 def get_game_id_by_player_and_week( p_id, week ):
 
-    df_ = pd.read_csv(f"{RAW_DATA_DIR}/player_play.csv")
+    df_ = pd.read_csv(f"{ap.RAW_DATA_DIR}/player_play.csv")
 
     list_week_games = get_game_ids_by_week( week )
     df_plays_ = df_ [ ( df_[ "gameId" ].isin( list_week_games ) ) & \
@@ -35,28 +31,6 @@ def get_game_id_by_player_and_week( p_id, week ):
         game_id = -1
 
     return game_id
-
-def get_defensive_players_in_game_by_team( game_id, team ):
-
-    l_defensive_players = []
-
-    df_play = pd.read_csv(f"{RAW_DATA_DIR}/plays.csv")
-    df_player_play = pd.read_csv(f"{RAW_DATA_DIR}/player_play.csv")
-
-    #print(f"{game_id}, {team}")
-
-    # find all plays where team was on defense
-    df_defensive_plays = df_play[ ( df_play[ "gameId" ] == int(game_id) ) & \
-                                  ( df_play[ "defensiveTeam" ] == team ) ]
-    l_def_plays = df_defensive_plays[ "playId" ].unique()
-
-    # get all players from team's defensive plays
-    df_players = df_player_play[ ( df_player_play[ "gameId" ] == int(game_id) ) & \
-                                 ( df_player_play[ "teamAbbr" ] == team ) & \
-                                 ( df_player_play[ "playId" ].isin(l_def_plays) ) ]
-    l_defensive_players = df_players[ "nflId" ].unique()
-
-    return l_defensive_players
 
 def get_game_ids_by_player( p_id ):
 
@@ -92,7 +66,7 @@ if s_player:
     player_ids = [ int(s_player) ]
     all_players = False
 else:
-    player_ids = get_defensive_players_in_game_by_team(s_game, s_team)
+    player_ids = ap.get_defensive_players_in_game_by_team(s_game, s_team)
     all_players = True
 
 if s_game:
@@ -109,10 +83,10 @@ p_filename  = "plays.csv"
 pt_filename = "plays_and_targets.csv"
 
 # load data from csv
-df_pp = pd.read_csv(f"{RAW_DATA_DIR}/{pp_filename}")
-df_ps = pd.read_csv(f"{RAW_DATA_DIR}/{ps_filename}")
-df_p  = pd.read_csv(f"{RAW_DATA_DIR}/{p_filename}")
-df_pt = pd.read_csv(f"{PROCESSED_DATA_DIR}/{pt_filename}")
+df_pp = pd.read_csv(f"{ap.RAW_DATA_DIR}/{pp_filename}")
+df_ps = pd.read_csv(f"{ap.RAW_DATA_DIR}/{ps_filename}")
+df_p  = pd.read_csv(f"{ap.RAW_DATA_DIR}/{p_filename}")
+df_pt = pd.read_csv(f"{ap.PROCESSED_DATA_DIR}/{pt_filename}")
 
 # merge the play target dataframe with the player play dataframe
 # AND the play dataframe
