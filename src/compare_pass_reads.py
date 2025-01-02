@@ -56,13 +56,18 @@ def compare_dropbacks_and_pass_motions( df_mp, player_id ):
     result_col = df_mp[[ "isDropback" ]]
 
     acc = ms.accuracy_score(test_col, result_col).round(4)
-    pre = ms.precision_score(test_col, result_col).round(4)
+    pre = ms.precision_score(test_col, result_col, zero_division=0).round(4)
     rec = ms.recall_score(test_col, result_col, zero_division=0).round(4)
-    f1 =  ms.f1_score(test_col, result_col).round(4)
+    f1 =  ms.f1_score(test_col, result_col, zero_division=0).round(4)
 
-    tn, fp, fn, tp = ms.confusion_matrix(test_col, result_col).ravel()
+    #print(f"{player_id} - plays: {len(df_merged_plays)}, cov: {len(test_col)}, dropbacks: {len(result_col)}")
+    matrix_array = ms.confusion_matrix(test_col, result_col).ravel()
+    if (len(matrix_array) == 4):
+        tn, fp, fn, tp = matrix_array
+    else:
+        print(f"WARN: player {player_id} has incorrect shape of matrix: {matrix_array}")
+        tn, fp, fn, tp = [len(test_col), 0, 0, 0]
 
-    #print(f"{p_id} - plays: {len(df_merged_plays)}, acc: {acc}, f1: {f1}; tn: {tn}, fp: {fp}, fn: {fn}, tp: {tp}")
     return [ int(player_id), len(df_merged_plays), tn, fp, fn, tp, acc, pre, rec, f1 ]
 
 
