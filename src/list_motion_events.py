@@ -4,9 +4,9 @@ import analyze_play as ap
 import sys
 import math
 
-from datetime import datetime
+from datetime  import datetime
 from itertools import groupby
-from operator import itemgetter
+from operator  import itemgetter
 
 ### CONSTANTS ###
 
