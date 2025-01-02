@@ -16,14 +16,14 @@ def get_pass_motion_coverage_for_play( df_row ):
 
     return (opposite_team_dir == defense_player_dir)
 
-def get_isdropback_dataframe( df_ps, df_pp, game_id, player_id ):
+def get_isdropback_dataframe( df_ps, df_pp, l_games, player_id ):
 
     # get dataframe with plays and dropback
-    df_game_plays = df_ps[ ( df_ps[ "gameId" ] == int(game_id) ) ]
+    df_game_plays = df_ps[ ( df_ps[ "gameId" ].isin(l_games) ) ]
     df_dropback_plays = df_game_plays[[ "gameId", "playId", "isDropback" ]]
 
     # get participating plays for player
-    df_participating_plays = df_pp[ ( df_pp[ "gameId" ] == int(game_id) ) & \
+    df_participating_plays = df_pp[ ( df_pp[ "gameId" ].isin(l_games) ) & \
                                     ( df_pp[ "nflId"  ] == int(player_id) ) ]
     #print(f"Found {len(df_participating_plays)} plays for {p_id}")
     df_merged_game_plays = df_participating_plays.merge( df_game_plays, on=["gameId", "playId"] )
@@ -40,10 +40,12 @@ def get_motionplays_dataframe(df_motion, player_id):
 
     return df_pm
 
-def get_merged_motion_and_dropback(df_ps, df_pp, df_mp, game_id, player_id):
+def get_merged_motion_and_dropback(df_ps, df_pp, df_mp, l_games, player_id):
 
-    df_plays_isdropback = get_isdropback_dataframe( df_ps, df_pp, game_id, player_id)
+    df_plays_isdropback = get_isdropback_dataframe( df_ps, df_pp, l_games, player_id)
     df_player_motion = get_motionplays_dataframe(df_mp, player_id)
+
+    #print(f"id: {player_id} dropback: {df_plays_isdropback.shape}, motion: {df_player_motion.shape}")
 
     return df_plays_isdropback.merge( df_player_motion, on=['gameId', 'playId', 'nflId'],
                                       how='left' )
@@ -81,14 +83,17 @@ s_team = args["team"]
 s_player = args["player"]
 s_game = args["game"]
 
+l_game_strings = s_game.split(",")
+l_games = list(map(int, l_game_strings))
+
 # if no player is specified, then pull all of the defensive players
 if s_player:
     player_ids = [ int(s_player) ]
 else:
-    player_ids = ap.get_defensive_players_in_game_by_team(s_game, s_team)
+    player_ids = ap.get_defensive_players_in_games_by_team(l_games, s_team)
 
-motion_filename = f"{ap.PROCESSED_DATA_DIR}/motion.2022091102.20241231.120336.csv"
-plays_filename   = f"{ap.RAW_DATA_DIR}/plays.csv"
+motion_filename      = f"{ap.PROCESSED_DATA_DIR}/motion.20250101.185127.csv"
+plays_filename       = f"{ap.RAW_DATA_DIR}/plays.csv"
 player_play_filename = f"{ap.RAW_DATA_DIR}/player_play.csv"
 
 df_motion      = pd.read_csv(motion_filename)
@@ -100,7 +105,7 @@ l_players = []
 for p in player_ids:
 
     df_merged_plays = get_merged_motion_and_dropback(df_plays, df_player_play,
-                                                     df_motion, s_game, p)
+                                                     df_motion, l_games, p)
     list_participating_plays = df_merged_plays[ "playId" ].unique()
 
     df_merged_plays["isPassMotionCoverage"] = df_merged_plays.apply(
@@ -120,5 +125,5 @@ for p in player_ids:
 col_names = [ "nflId", "plays", "tn", "fp", "fn", "tp", "acc", "pre", "rec", "f1" ]
 df_pass_reads = pd.DataFrame(l_players, columns=col_names)
 
-df_pass_reads.sort_values(by=["f1", "acc"], inplace=True, ascending=False)
+df_pass_reads.sort_values(by=["tp", "tn"], inplace=True, ascending=False)
 print(df_pass_reads.to_string(index=False))

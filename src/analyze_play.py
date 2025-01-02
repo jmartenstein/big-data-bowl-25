@@ -21,23 +21,28 @@ PROCESSED_DATA_DIR = "data/processed"
 
 ### FUNCTIONS ###
 
-def get_defensive_players_in_game_by_team( game_id, team ):
+def get_defensive_players_in_games_by_team( l_games, team ):
 
     l_defensive_players = []
 
     df_play = pd.read_csv(f"{RAW_DATA_DIR}/plays.csv")
     df_player_play = pd.read_csv(f"{RAW_DATA_DIR}/player_play.csv")
 
-    # find all plays where team was on defense
-    df_defensive_plays = df_play[ ( df_play[ "gameId" ] == int(game_id) ) & \
-                                  ( df_play[ "defensiveTeam" ] == team ) ]
-    l_def_plays = df_defensive_plays[ "playId" ].unique()
+    for g in l_games:
 
-    # get all players from team's defensive plays
-    df_players = df_player_play[ ( df_player_play[ "gameId" ] == int(game_id) ) & \
-                                 ( df_player_play[ "teamAbbr" ] == team ) & \
-                                 ( df_player_play[ "playId" ].isin(l_def_plays) ) ]
-    l_defensive_players = df_players[ "nflId" ].unique()
+        # find all plays where team was on defense
+        df_defensive_plays = df_play[ ( df_play[ "gameId" ] == g ) & \
+                                      ( df_play[ "defensiveTeam" ] == team ) ]
+        l_def_plays = df_defensive_plays[ "playId" ].unique()
+
+        # get all players from team's defensive plays
+        df_players = df_player_play[ ( df_player_play[ "gameId" ] == g ) & \
+                                     ( df_player_play[ "teamAbbr" ] == team ) & \
+                                     ( df_player_play[ "playId" ].isin(l_def_plays) ) ]
+        l_game_players = df_players[ "nflId" ].unique().tolist()
+
+        l_unique_players = set(l_game_players) - set(l_defensive_players)
+        l_defensive_players = l_defensive_players + list(l_unique_players)
 
     return l_defensive_players
 
