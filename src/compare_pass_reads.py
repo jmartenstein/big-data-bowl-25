@@ -95,10 +95,12 @@ else:
 motion_filename      = f"{ap.PROCESSED_DATA_DIR}/motion.20250101.185127.csv"
 plays_filename       = f"{ap.RAW_DATA_DIR}/plays.csv"
 player_play_filename = f"{ap.RAW_DATA_DIR}/player_play.csv"
+players_filename     = f"{ap.RAW_DATA_DIR}/players.csv"
 
 df_motion      = pd.read_csv(motion_filename)
 df_plays       = pd.read_csv(plays_filename)
 df_player_play = pd.read_csv(player_play_filename)
+df_players     = pd.read_csv(players_filename)
 
 l_players = []
 
@@ -123,7 +125,12 @@ for p in player_ids:
         #print(pass_row)
 
 col_names = [ "nflId", "plays", "tn", "fp", "fn", "tp", "acc", "pre", "rec", "f1" ]
-df_pass_reads = pd.DataFrame(l_players, columns=col_names)
+df_pr_ = pd.DataFrame(l_players, columns=col_names)
+
+# merge pass reads dataframe with subset of players dataframe
+df_players_subset = df_players[[ "nflId", "displayName", "position" ]]
+df_pass_reads = df_pr_.merge( df_players_subset, on=["nflId"] )
 
 df_pass_reads.sort_values(by=["tp", "tn"], inplace=True, ascending=False)
-print(df_pass_reads.to_string(index=False))
+merged_col_names = [ "displayName", "position" ] + col_names
+print(df_pass_reads[merged_col_names].to_string(index=False))
