@@ -66,7 +66,7 @@ if s_player:
     player_ids = [ int(s_player) ]
     all_players = False
 else:
-    player_ids = ap.get_defensive_players_in_game_by_team(s_game, s_team)
+    player_ids = ap.get_defensive_players_in_games_by_team([ int(s_game) ], s_team)
     all_players = True
 
 if s_game:
