@@ -3,6 +3,7 @@ import analyze_play as ap
 import sklearn.metrics as ms
 
 import argparse
+import glob
 import random
 import sys
 
@@ -97,12 +98,18 @@ if s_player:
 else:
     player_ids = ap.get_defensive_players_in_games_by_team(l_games, s_team)
 
-motion_filename      = f"{ap.PROCESSED_DATA_DIR}/motion.20250101.185127.csv"
+motion_filename      = f"{ap.PROCESSED_DATA_DIR}/motion.week4*"
 plays_filename       = f"{ap.RAW_DATA_DIR}/plays.csv"
 player_play_filename = f"{ap.RAW_DATA_DIR}/player_play.csv"
 players_filename     = f"{ap.RAW_DATA_DIR}/players.csv"
 
-df_motion      = pd.read_csv(motion_filename)
+motion_files_found = glob.glob(motion_filename)
+if len(motion_files_found) > 1:
+    print(f"ERROR: Motion file {motion_filename} is not specific enough; " \
+          f"found {len(motion_files_found)} files")
+    sys.exit(1)
+
+df_motion      = pd.read_csv(motion_files_found[0])
 df_plays       = pd.read_csv(plays_filename)
 df_player_play = pd.read_csv(player_play_filename)
 df_players     = pd.read_csv(players_filename)
