@@ -21,7 +21,7 @@ PROCESSED_DATA_DIR = "data/processed"
 
 ### FUNCTIONS ###
 
-def get_defensive_players_in_games_by_team( l_games, team ):
+def get_defensive_players_in_games_by_team( l_games, team="" ):
 
     l_defensive_players = []
 
@@ -30,15 +30,17 @@ def get_defensive_players_in_games_by_team( l_games, team ):
 
     for g in l_games:
 
-        # find all plays where team was on defense
-        df_defensive_plays = df_play[ ( df_play[ "gameId" ] == g ) & \
-                                      ( df_play[ "defensiveTeam" ] == team ) ]
-        l_def_plays = df_defensive_plays[ "playId" ].unique()
+        # merge player data with overall play statistics
+        df_game_ps = df_play[ df_play[ "gameId" ] == g ]
+        df_game_pp = df_player_play[ df_player_play[ "gameId" ] == g ]
+        df_merged  = df_game_pp.merge( df_game_ps, on=['playId'] )
 
-        # get all players from team's defensive plays
-        df_players = df_player_play[ ( df_player_play[ "gameId" ] == g ) & \
-                                     ( df_player_play[ "teamAbbr" ] == team ) & \
-                                     ( df_player_play[ "playId" ].isin(l_def_plays) ) ]
+        df_def_plays = df_merged[ df_merged[ "defensiveTeam" ] == df_merged[ "teamAbbr" ] ]
+        if team:
+            df_players = df_def_plays[ df_def_plays[ "teamAbbr" ] == team ]
+        else:
+            df_players = df_def_plays
+
         l_game_players = df_players[ "nflId" ].unique().tolist()
 
         l_unique_players = set(l_game_players) - set(l_defensive_players)
