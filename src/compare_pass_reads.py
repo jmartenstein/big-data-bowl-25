@@ -4,12 +4,27 @@ import sklearn.metrics as ms
 import numpy as np
 
 import argparse
+import datetime
 import glob
 import random
 import sys
 
 
 ### FUNCTIONS ###
+
+def get_passread_filename(game_id=''):
+
+    now = datetime.datetime.now()
+
+    s_date = now.strftime("%Y%m%d")
+    s_time = now.strftime("%H%M%S")
+
+    if game_id:
+        s_prefix = f"passread.{game_id}"
+    else:
+        s_prefix = "passread"
+
+    return f"{s_prefix}.{s_date}.{s_time}.csv"
 
 def get_pass_motion_coverage_for_play( df_row ):
 
@@ -65,13 +80,13 @@ def compare_dropbacks_and_pass_motions( df_mp, player_id ):
     if (len(matrix_array) == 4):
         tn, fp, fn, tp = matrix_array
         if (tp + fn) > 0:
-            tpr = tp / (tp + fn)
+            tpr = round(tp / (tp + fn), 4)
         else:
             tpr = np.nan
         if (tn + fp) > 0:
-            fpr = tn / (tn + fp)
+            fpr = round(tn / (tn + fp), 4)
         else:
-            tpr = np.nan
+            fpr = np.nan
     else:
         print(f"WARN: player {player_id} has incorrect shape of matrix: {matrix_array}")
         tn, fp, fn, tp = [len(test_col), 0, 0, 0]
@@ -85,17 +100,20 @@ def compare_dropbacks_and_pass_motions( df_mp, player_id ):
 # parse arguments for game_id and player_id
 parser = argparse.ArgumentParser( description='Analyze how well defensive players \
                                                can read an offense' )
-parser.add_argument( '-g', '--game',   help='Specify game_id (leave blank to analyze \
-                                             all games in weeks 1 - 6)' )
-parser.add_argument( '-p', '--player', help='Specify player_id (leave blank to \
-                                             analyze all defensive players per game)' )
-parser.add_argument( '-t', '--team',   help='If no player_id, get all defensive players' \
-                                            'from team' )
+parser.add_argument( '-g', '--game',    help='Specify game_id (leave blank to analyze \
+                                              all games in weeks 1 - 6)' )
+parser.add_argument( '-p', '--player',  help='Specify player_id (leave blank to \
+                                              analyze all defensive players per game)' )
+parser.add_argument( '-t', '--team',    help='If no player_id, get all defensive players' \
+                                             'from team' )
+parser.add_argument( '-o', '--outfile', action='store_true',
+                     help='If set, write output to file')
 args = vars( parser.parse_args() )
 
 s_team = args["team"]
 s_player = args["player"]
 s_game = args["game"]
+f_outfile = args["outfile"]
 
 l_game_strings = s_game.split(",")
 l_games = list(map(int, l_game_strings))
@@ -153,4 +171,15 @@ df_pass_reads = df_pr_.merge( df_players_subset, on=["nflId"] )
 
 df_pass_reads.sort_values(by=["tp", "tn"], inplace=True, ascending=False)
 merged_col_names = [ "displayName", "position" ] + col_names
-print(df_pass_reads[merged_col_names].to_string(index=False))
+
+df_out = df_pass_reads[ merged_col_names ]
+
+if f_outfile:
+    if len(l_games) > 1:
+        outfile_name = get_passread_filename()
+    else:
+        outfile_name = get_passread_filename( l_games[0] )
+    print(f"DataFrame (shape: {df_out.shape}) to file {outfile_name}")
+    df_out.to_csv(f"data/processed/{outfile_name}", index=False)
+else:
+    print(df_out.to_string(index=False))
