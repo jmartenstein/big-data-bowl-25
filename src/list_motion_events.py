@@ -106,7 +106,20 @@ def get_general_direction_and_offset(vector_x, vector_y, play_direction):
             general_dir = "up"
             offset = 90 - angle_deg
 
-    return (general_dir, offset)
+    return (general_dir, round(offset, 4))
+
+def get_motion_dir_relative_to_scrimmage(v_x, team_dir):
+
+    result_val = False
+    f_relative_dir = "forward"
+
+    if (team_dir == "left") and (v_x > 0):
+        f_relative_dir = "back"
+
+    if (team_dir == "right") and (v_x < 0):
+        f_relative_dir = "back"
+
+    return f_relative_dir
 
 def get_motion_event_frames_by_player(df, p_id):
 
@@ -136,32 +149,36 @@ def summarize_motion_event(df, l_frames, player_id, is_def):
     motion_time = (f_end - f_start) / 10
 
     start_row = get_tracking_info_for_player_frame( df, player_id, f_start )
-    end_row = get_tracking_info_for_player_frame( df, player_id, f_end )
+    end_row   = get_tracking_info_for_player_frame( df, player_id, f_end )
 
     name = ap.get_player_name_by_id(df, player_id)
 
     s_play_dir = start_row["playDirection"].values[0]
 
-    vector_x = end_row["x"].values[0] - start_row["x"].values[0]
-    vector_y = end_row["y"].values[0] - start_row["y"].values[0]
+    vector_x = round(end_row["x"].values[0] - start_row["x"].values[0], 4)
+    vector_y = round(end_row["y"].values[0] - start_row["y"].values[0], 4)
 
-    motion_dir, dir_offset = get_general_direction_and_offset(vector_x, vector_y, s_play_dir)
-
-    if abs(dir_offset) > 45:
-        print(f"WARN: {name:17} ({player_id}): {f_start:3} - {f_end:3}; {motion_dir:6} {dir_offset}")
-
-    total_distance = math.sqrt((vector_x ** 2) + (vector_y ** 2))
-    abs_speed = total_distance / motion_time
+    final_x = round(end_row["x"].values[0], 4)
+    final_y = round(end_row["y"].values[0], 4)
 
     if is_def:
         team_dir = ap.get_opposite_dir(s_play_dir)
     else:
         team_dir = s_play_dir
 
-    return [ f_start, f_end, vector_x, vector_y, motion_dir, dir_offset,
-             team_dir, total_distance, abs_speed ]
+    motion_dir, dir_offset = get_general_direction_and_offset(vector_x, vector_y, s_play_dir)
+    motion_dir_rel_to_scrimmage = get_motion_dir_relative_to_scrimmage(vector_x, team_dir)
 
-def get_motion_events( df_f, df_d ):
+    if abs(dir_offset) > 45:
+        print(f"WARN: {name:17} ({player_id}): {f_start:3} - {f_end:3}; {motion_dir:6} {dir_offset}")
+
+    total_distance = round(math.sqrt((vector_x ** 2) + (vector_y ** 2)), 4)
+    abs_speed = round(total_distance / motion_time, 4)
+
+    return [ f_start, f_end, vector_x, vector_y, final_x, final_y, motion_dir,
+             dir_offset, team_dir, motion_dir_rel_to_scrimmage, total_distance, abs_speed ]
+
+def get_motion_events( df_f, df_d, df_pp ):
 
     game_id = df_d["gameId"].values[0]
     play_id = df_d["playId"].values[0]
@@ -180,33 +197,31 @@ def get_motion_events( df_f, df_d ):
     l_motions = []
     motion_idx = 11
 
-    df_pp = pd.read_csv(f"{ap.DATA_DIR}/player_play.csv")
-
     for p in p_ids:
 
         # nflId is nan for the football, so we can ignore it for the loop
         if math.isnan(p):
             continue
 
-        row_pp = df_pp[ ( df_pp[ "gameId" ] == game_id ) & \
-                        ( df_pp[ "nflId" ] == p ) ]
+        row_pp = df_pp[ df_pp[ "nflId" ] == p ]
         team = row_pp[ "teamAbbr" ].values[0]
         is_defense = (defense_team == team)
+
+        player_stats = [ game_id, play_id, p, team, is_defense ]
 
         t_frames = get_motion_event_frames_by_player(df_pre, p)
         for l in range(len(t_frames)):
 
-            player_stats = [ game_id, play_id, p, motion_idx, team, is_defense ]
-
             #l_frames = t_frames[l]
             l_stats = summarize_motion_event( df_pre, t_frames[l], p, is_defense )
-            l_motions.append( player_stats + l_stats )
+            l_motions.append( player_stats + [ motion_idx ] + l_stats )
 
             motion_idx += 1
 
-    columns = [ "gameId", "playId", "nflId", "motionEventId", "teamAbbr", "isDefense", "startFrameId",
-                "endFrameId", "vectorX", "vectorY", "motionDir", "dirOffest", "teamDir", "totalDistance",
-                "absSpeed" ]
+    columns = [ "gameId", "playId", "nflId", "teamAbbr", "isDefense", "motionEventId",
+                "startFrameId", "endFrameId", "vectorX", "vectorY", "finalX", "finalY",
+                "motionDir", "dirOffest", "teamDir", "motionDirRelativeToScrimmage",
+                "totalDistance", "absSpeed" ]
 
     return pd.DataFrame( l_motions, columns=columns )
 
@@ -233,21 +248,25 @@ game_list = g_id.split(",")
 
 df_out = pd.DataFrame([])
 
+plays_file       = ap.DATA_DIR + "/plays.csv"
+player_play_file = ap.DATA_DIR + "/player_play.csv"
+
+df_plays       = pd.read_csv(plays_file)
+df_player_play = pd.read_csv(player_play_file)
+
 for g in game_list:
 
-    tracking_file = ap.get_tracking_file_for_week( int(g) )
-    plays_file = ap.DATA_DIR + "/plays.csv"
-
-    df_plays = pd.read_csv(plays_file)
-    df_tracking = pd.read_csv(tracking_file)
+    tracking_file  = ap.get_tracking_file_for_week( int(g) )
+    df_tracking    = pd.read_csv(tracking_file)
 
     df_game_frames = ap.filter_frames_by_game( df_tracking, int(g) )
-    df_game_plays = ap.filter_frames_by_game( df_plays, int(g) )
+    df_game_plays  = ap.filter_frames_by_game( df_plays, int(g) )
+    df_game_pp     = ap.filter_frames_by_game( df_player_play, int(g) )
 
     if p_id:
         list_plays = [ p_id ]
     else:
-        list_plays = get_plays_from_game( int(g) )
+        list_plays = df_game_plays["playId"].unique()
 
     count = 0
 
@@ -262,9 +281,11 @@ for g in game_list:
             print('.', end='', flush=True)
 
         df_play_tracking_frames = ap.filter_frames_by_play( df_game_frames, p )
-        df_play_details = ap.filter_frames_by_play( df_game_plays, p)
+        df_play_details         = ap.filter_frames_by_play( df_game_plays, p)
+        df_players_details      = ap.filter_frames_by_play( df_game_pp, p )
 
-        df_motion_events = get_motion_events( df_play_tracking_frames, df_play_details )
+        df_motion_events = get_motion_events( df_play_tracking_frames, df_play_details,
+                                              df_players_details )
 
         df_out = pd.concat( [ df_out, df_motion_events ] )
 
