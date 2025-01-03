@@ -12,10 +12,11 @@ import sys
 
 def get_pass_motion_coverage_for_play( df_row ):
 
-    opposite_team_dir = ap.get_opposite_dir( df_row[ "teamDir" ] )
-    defense_player_dir = df_row[ "motionDir" ]
+    #opposite_team_dir = ap.get_opposite_dir( df_row[ "teamDir" ] )
+    #defense_player_dir = df_row[ "motionDir" ]
 
-    return (opposite_team_dir == defense_player_dir)
+    relative_dir = df_row[ "motionDirRelativeToScrimmage" ]
+    return (relative_dir == "back")
 
 def get_isdropback_dataframe( df_ps, df_pp, l_games, player_id ):
 
@@ -35,7 +36,7 @@ def get_motionplays_dataframe(df_motion, player_id):
 
     # get significant motion events for player in game
     df_pm = df_motion[ df_motion[ "nflId" ] == int(player_id) ].copy()
-    df_pm.sort_values( by=['playId', 'totalDistance','nflId','gameId'],
+    df_pm.sort_values( by=['playId', 'totalDistance', 'nflId', 'gameId'],
                        axis=0, ascending=True, inplace=True)
     df_pm.drop_duplicates(subset=['gameId', 'playId', 'nflId'], inplace=True, keep='last')
 
@@ -98,7 +99,7 @@ if s_player:
 else:
     player_ids = ap.get_defensive_players_in_games_by_team(l_games, s_team)
 
-motion_filename      = f"{ap.PROCESSED_DATA_DIR}/motion.week4*"
+motion_filename      = f"{ap.PROCESSED_DATA_DIR}/motion.week4.20250102.22*"
 plays_filename       = f"{ap.RAW_DATA_DIR}/plays.csv"
 player_play_filename = f"{ap.RAW_DATA_DIR}/player_play.csv"
 players_filename     = f"{ap.RAW_DATA_DIR}/players.csv"
