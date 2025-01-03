@@ -1,6 +1,7 @@
 import pandas as pd
 import analyze_play as ap
 import sklearn.metrics as ms
+import numpy as np
 
 import argparse
 import glob
@@ -11,9 +12,6 @@ import sys
 ### FUNCTIONS ###
 
 def get_pass_motion_coverage_for_play( df_row ):
-
-    #opposite_team_dir = ap.get_opposite_dir( df_row[ "teamDir" ] )
-    #defense_player_dir = df_row[ "motionDir" ]
 
     relative_dir = df_row[ "motionDirRelativeToScrimmage" ]
     return (relative_dir == "back")
@@ -66,11 +64,20 @@ def compare_dropbacks_and_pass_motions( df_mp, player_id ):
     matrix_array = ms.confusion_matrix(test_col, result_col).ravel()
     if (len(matrix_array) == 4):
         tn, fp, fn, tp = matrix_array
+        if (tp + fn) > 0:
+            tpr = tp / (tp + fn)
+        else:
+            tpr = np.nan
+        if (tn + fp) > 0:
+            fpr = tn / (tn + fp)
+        else:
+            tpr = np.nan
     else:
         print(f"WARN: player {player_id} has incorrect shape of matrix: {matrix_array}")
         tn, fp, fn, tp = [len(test_col), 0, 0, 0]
+        tpr, fpr = [ 0.0, 1.0 ]
 
-    return [ int(player_id), len(df_merged_plays), tn, fp, fn, tp, acc, pre, rec, f1 ]
+    return [ int(player_id), len(df_merged_plays), tn, fp, fn, tp, tpr, fpr, acc, pre, rec, f1 ]
 
 
 ### MAIN ###
@@ -137,7 +144,7 @@ for p in player_ids:
         l_players.append(pass_row)
         #print(pass_row)
 
-col_names = [ "nflId", "plays", "tn", "fp", "fn", "tp", "acc", "pre", "rec", "f1" ]
+col_names = [ "nflId", "plays", "tn", "fp", "fn", "tp", "tpr", "fpr", "acc", "pre", "rec", "f1" ]
 df_pr_ = pd.DataFrame(l_players, columns=col_names)
 
 # merge pass reads dataframe with subset of players dataframe
