@@ -3,6 +3,8 @@ import analyze_play as ap
 import sklearn.metrics as ms
 import numpy as np
 
+from sklearn.metrics import roc_auc_score
+
 import argparse
 import datetime
 import glob
@@ -25,6 +27,20 @@ def get_passread_filename(game_id=''):
         s_prefix = "passread"
 
     return f"{s_prefix}.{s_date}.{s_time}.csv"
+
+def motiondir_to_int( df_row ):
+
+    if (df_row[ "motionDirRelativeToScrimmage" ] == "back"):
+        return 1
+    else:
+        return 0
+
+def isdropback_to_int( df_row ):
+
+    if (df_row["isDropback"]):
+        return 1
+    else:
+        return 0
 
 def get_pass_motion_coverage_for_play( df_row ):
 
@@ -67,16 +83,16 @@ def get_merged_motion_and_dropback(df_ps, df_pp, df_mp, l_games, player_id):
 
 def compare_dropbacks_and_pass_motions( df_mp, player_id ):
 
-    test_col   = df_mp[[ "isPassMotionCoverage" ]]
-    result_col = df_mp[[ "isDropback" ]]
+    cm_test_col   = df_mp[[ "isPassMotionCoverage" ]]
+    cm_result_col = df_mp[[ "isDropback" ]]
 
-    acc = ms.accuracy_score(test_col, result_col).round(4)
-    pre = ms.precision_score(test_col, result_col, zero_division=0).round(4)
-    rec = ms.recall_score(test_col, result_col, zero_division=0).round(4)
-    f1 =  ms.f1_score(test_col, result_col, zero_division=0).round(4)
+    acc = ms.accuracy_score(cm_test_col, cm_result_col).round(4)
+    pre = ms.precision_score(cm_test_col, cm_result_col, zero_division=0).round(4)
+    rec = ms.recall_score(cm_test_col, cm_result_col, zero_division=0).round(4)
+    f1 =  ms.f1_score(cm_test_col, cm_result_col, zero_division=0).round(4)
 
     #print(f"{player_id} - plays: {len(df_merged_plays)}, cov: {len(test_col)}, dropbacks: {len(result_col)}")
-    matrix_array = ms.confusion_matrix(test_col, result_col).ravel()
+    matrix_array = ms.confusion_matrix(cm_test_col, cm_result_col).ravel()
     if (len(matrix_array) == 4):
         tn, fp, fn, tp = matrix_array
         if (tp + fn) > 0:
@@ -89,10 +105,18 @@ def compare_dropbacks_and_pass_motions( df_mp, player_id ):
             fpr = np.nan
     else:
         print(f"WARN: player {player_id} has incorrect shape of matrix: {matrix_array}")
-        tn, fp, fn, tp = [len(test_col), 0, 0, 0]
+        tn, fp, fn, tp = [len(cm_test_col), 0, 0, 0]
         tpr, fpr = [ 0.0, 1.0 ]
 
-    return [ int(player_id), len(df_merged_plays), tn, fp, fn, tp, tpr, fpr, acc, pre, rec, f1 ]
+    auc_test_col = df_mp[ "motionDirToInt" ]
+    auc_result_col = df_mp[ "isDropbackToInt" ]
+
+    try:
+        auc = roc_auc_score(auc_test_col, auc_result_col)
+    except ValueError:
+        auc = 0
+
+    return [ int(player_id), len(df_merged_plays), tn, fn, fp, tp, tpr, fpr, acc, pre, rec, f1, auc ]
 
 
 ### MAIN ###
@@ -151,6 +175,9 @@ for p in player_ids:
     df_merged_plays["isPassMotionCoverage"] = df_merged_plays.apply(
         get_pass_motion_coverage_for_play, axis=1 )
 
+    df_merged_plays["motionDirToInt"]  =  df_merged_plays.apply(motiondir_to_int, axis = 1)
+    df_merged_plays["isDropbackToInt"] =  df_merged_plays.apply(isdropback_to_int, axis = 1)
+
     #print(df_merged_plays.head())
     #print(df_merged_plays.columns)
     #print(df_merged_plays[[ "gameId", "playId", "teamDir", "motionDir", "isPassMotionCoverage", "isDropback" ]])
@@ -162,7 +189,7 @@ for p in player_ids:
         l_players.append(pass_row)
         #print(pass_row)
 
-col_names = [ "nflId", "plays", "tn", "fp", "fn", "tp", "tpr", "fpr", "acc", "pre", "rec", "f1" ]
+col_names = [ "nflId", "plays", "tn", "fn", "fp", "tp", "tpr", "fpr", "acc", "pre", "rec", "f1", "auc" ]
 df_pr_ = pd.DataFrame(l_players, columns=col_names)
 
 # merge pass reads dataframe with subset of players dataframe
