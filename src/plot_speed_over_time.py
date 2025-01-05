@@ -2,9 +2,11 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 import analyze_play as ap
+
+import glob
 import sys
 
-ap.DATA_DIR = 'data/kaggle'
+#ap.DATA_DIR = 'data/kaggle'
 
 def get_player_column(df, player_id, col_name):
 
@@ -23,36 +25,48 @@ def get_player_list_sorted_by_speed(df):
 
     return player_speeds.index
 
-def build_player_columns(df, col_name, p_list):
+def build_player_columns(df_f, df_m, col_name, p_list):
 
     # initiate dataframe for plot
     df_players = pd.DataFrame([])
+    hash_colors = {}
+
+    highlight_color = '#111111'
+    default_color = '#DDDDDD'
 
     for p in p_list:
 
-        df_p_col = get_player_column( df, p, col_name )
+        df_p_col = get_player_column( df_f, p, col_name )
 
         if not df_players.empty:
             df_players = df_players.merge(df_p_col, on=['frameId'])
         else:
             df_players = df_p_col
 
+        df_m_player = df_m[ df_m[ "nflId" ] == p ]
+        #print(p)
+
+        if df_m_player.empty:
+            hash_colors[df_p_col.columns[1]] = default_color
+        else:
+            hash_colors[df_p_col.columns[1]] = highlight_color
+
     df_players.set_index('frameId', inplace=True)
 
-    return df_players
+    return df_players, hash_colors
 
-def build_team_columns(df, team, column_name):
+def build_team_columns(df_f, df_m, team, column_name):
 
     # get list of unique team player id's in frame
-    df_ = df[ df[ "club" ] == team ]
+    df_ = df_f[ df_f[ "club" ] == team ]
     p_ids = get_player_list_sorted_by_speed(df_)
-    df_team = build_player_columns( df_, column_name, p_ids )
+    df_team, hash_colors = build_player_columns( df_, df_m, column_name, p_ids )
 
-    return df_team
+    return df_team, hash_colors
 
-def set_subplot_details(ax, df, title, set_f_id, snap_f_id, motion_f_id, shift_f_id):
+def set_subplot_details(ax, df, title, colors, set_f_id, snap_f_id, motion_f_id=0, shift_f_id=0):
 
-    df.plot.line(ax=ax)
+    df.plot.line(ax=ax, color=colors)
 
     ax.set_title(title)
     ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
@@ -108,43 +122,63 @@ def plot_player_speed_over_time(game_id, play_id, player_list):
 
     return df_d[ "playDescription" ].values[0]
 
-def plot_speed_over_time(game_id, play_id):
 
-    df_frames, df_details = ap.load_tracking_from_game_and_play(game_id, play_id)
+def plot_speed_over_time( game_id, play_id ):
 
-    offense_team = df_details[ "possessionTeam" ].values[0]
-    defense_team = df_details[ "defensiveTeam" ].values[0]
+    df_f, df_d = ap.load_tracking_from_game_and_play(game_id, play_id)
 
-    set_frame_id = ap.get_frame_id_for_event(df_frames, "line_set")
-    snap_frame_id = ap.get_frame_id_for_event(df_frames, "ball_snap")
-    motion_frame_id = ap.get_frame_id_for_event(df_frames, "man_in_motion")
-    shift_frame_id = ap.get_frame_id_for_event(df_frames, "shift")
+    motion_filename  = f"{ap.PROCESSED_DATA_DIR}/motion.2022091102.20250105.1236*"
+    players_filename = f"{ap.RAW_DATA_DIR}/players.csv"
+
+    motion_files_found = glob.glob(motion_filename)
+    if len(motion_files_found) > 1:
+        print(f"ERROR: Motion file {motion_filename} is not specific enough; " \
+              f"found {len(motion_files_found)} files")
+        sys.exit(1)
+
+    df_players = pd.read_csv(players_filename)
+    df_motion = pd.read_csv(motion_files_found[0])
+
+    df_game_motion = ap.filter_frames_by_game( df_motion, game_id )
+    df_play_motion = ap.filter_frames_by_play( df_game_motion, play_id )
+
+    df_player_subset = df_players[[ "nflId", "displayName" ]]
+    df_motion_merged = df_play_motion.merge( df_player_subset, on=[ "nflId" ] )
+
+    print(df_motion_merged)
+
+    offense_team = df_d[ "possessionTeam" ].values[0]
+    defense_team = df_d[ "defensiveTeam" ].values[0]
+
+    start_events = [ "line_set", "man_in_motion" ]
+    end_events = [ "ball_snap" ]
+
+    presnap_start = ap.get_min_frame_from_events(df_f, start_events)
+    presnap_end = ap.get_max_frame_from_events(df_f, end_events)
 
     frame_padding = 7
-    df_presnap_frames = df_frames[ ( df_frames[ "frameId" ] >= set_frame_id - frame_padding ) & \
-                                   ( df_frames[ "frameId" ] <= snap_frame_id + frame_padding )
-                                 ]
+    df_pre = ap.get_presnap_dataframe( df_f, presnap_start, presnap_end, frame_padding )
 
     fig, axes = plt.subplots(nrows=2, ncols=1, figsize=(10,8))
 
     column = "s"
-    df_offense = build_team_columns(df_presnap_frames, offense_team, column)
-    set_subplot_details(axes[0], df_offense, f"Offense: {offense_team}",
-                        set_frame_id, snap_frame_id, motion_frame_id, shift_frame_id)
+    df_offense, off_color = build_team_columns(df_pre, df_motion_merged, offense_team, column)
+    set_subplot_details(axes[0], df_offense, f"Offense: {offense_team}", off_color,
+                        presnap_start, presnap_end)
 
-    df_defense = build_team_columns(df_presnap_frames, defense_team, column)
-    set_subplot_details(axes[1], df_defense, f"Defense: {defense_team}",
-                        set_frame_id, snap_frame_id, motion_frame_id, shift_frame_id)
+    df_defense, def_color = build_team_columns(df_pre, df_motion_merged, defense_team, column)
+    set_subplot_details(axes[1], df_defense, f"Defense: {defense_team}", def_color,
+                        presnap_start, presnap_end)
 
     #print("Offense:")
-    #summarize_player_stats(df_offense)
+    #summarize_speed_over_time(df_offense)
     #print("\nDefense:")
-    #summarize_player_stats(df_defense)
+    #summarize_speed_over_time(df_defense)
 
     plt.tight_layout()
     plt.show()
 
-    return df_details[ "playDescription" ].values[0]
+    return df_d[ "playDescription" ].values[0]
 
 if __name__  == '__main__':
 
