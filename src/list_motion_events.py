@@ -12,12 +12,6 @@ from operator  import itemgetter
 
 ap.DATA_DIR = "data/kaggle"
 
-# Set thresholds - the player has to maintain t_speed for at least t_time
-# to qualify as a motion event
-SPEED_THRESHOLD = 1.6  # yards / sec
-TIME_THRESHOLD  = 0.5  # seconds (multiply * 10 for frame count)
-
-
 ### FUNCTIONS ###
 
 def get_motion_event_filename(game_id=''):
@@ -132,7 +126,7 @@ def get_motion_event_frames_by_player(df, p_id):
 
     # get all frames for player above threshold speed
     df_ = df[ ( df[ "nflId" ] == p_id ) & \
-              ( df[ "s" ] >= SPEED_THRESHOLD ) ]
+              ( df[ "s" ] >= ap.SPEED_THRESHOLD ) ]
 
     if (len(df_)) > 0:
 
@@ -141,7 +135,7 @@ def get_motion_event_frames_by_player(df, p_id):
         # group frames by consecutive numbers
         for k, g in groupby(enumerate(frames), lambda i_x: i_x[0] - i_x[1]):
             l_group = list(map(itemgetter(1), g))
-            if len(l_group) > (TIME_THRESHOLD * 10):
+            if len(l_group) > (ap.TIME_THRESHOLD * 10):
                 l_grouped_frames.append(l_group)
 
     return l_grouped_frames

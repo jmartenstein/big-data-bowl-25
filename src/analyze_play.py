@@ -19,6 +19,11 @@ PROCESSED_DATA_DIR = "data/processed"
 #DATA_DIR = "/kaggle/input/nfl-big-data-bowl-2025"
 #DATA_DIR = 'data/kaggle'
 
+# Set thresholds - the player has to maintain t_speed for at least t_time
+# to qualify as a motion event
+SPEED_THRESHOLD = 1.6  # yards / sec
+TIME_THRESHOLD  = 0.5  # seconds (multiply * 10 for frame count)
+
 ### FUNCTIONS ###
 
 def get_defensive_players_in_games_by_team( l_games, team="" ):
