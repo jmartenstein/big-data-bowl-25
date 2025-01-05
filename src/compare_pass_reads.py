@@ -148,7 +148,7 @@ if s_player:
 else:
     player_ids = ap.get_defensive_players_in_games_by_team(l_games, s_team)
 
-motion_filename      = f"{ap.PROCESSED_DATA_DIR}/motion.week4.20250102.22*"
+motion_filename      = f"{ap.PROCESSED_DATA_DIR}/motion.week4.20250105*"
 plays_filename       = f"{ap.RAW_DATA_DIR}/plays.csv"
 player_play_filename = f"{ap.RAW_DATA_DIR}/player_play.csv"
 players_filename     = f"{ap.RAW_DATA_DIR}/players.csv"
