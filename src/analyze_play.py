@@ -26,6 +26,27 @@ TIME_THRESHOLD  = 0.5  # seconds (multiply * 10 for frame count)
 
 ### FUNCTIONS ###
 
+def get_min_frame_from_events( df, l_events ):
+    min_frame = 500
+    for e in l_events:
+        frame = int(get_frame_id_for_event(df, e))
+        if (frame > - 1)  & (frame < min_frame):
+            min_frame = frame
+    return min_frame
+
+def get_max_frame_from_events( df, l_events ):
+    max_frame = 0
+    for e in l_events:
+        frame = int(get_frame_id_for_event(df, e))
+        if frame > max_frame:
+            max_frame = frame
+    return max_frame
+
+def get_presnap_dataframe( df, start_frame, end_frame, padding=0 ):
+    df_ = df[ ( df[ "frameId" ] >= start_frame - padding ) & \
+              ( df[ "frameId" ] <= end_frame + padding ) ]
+    return df_
+
 def get_defensive_players_in_games_by_team( l_games, team="" ):
 
     l_defensive_players = []

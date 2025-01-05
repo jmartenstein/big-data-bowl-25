@@ -37,27 +37,6 @@ def get_plays_from_game( game_id ):
 
     return df_game_plays["playId"].unique()
 
-def get_min_frame_from_events( df, l_events ):
-    min_frame = 500
-    for e in l_events:
-        frame = int(ap.get_frame_id_for_event(df, e))
-        if (frame > - 1)  & (frame < min_frame):
-            min_frame = frame
-    return min_frame
-
-def get_max_frame_from_events( df, l_events ):
-    max_frame = 0
-    for e in l_events:
-        frame = int(ap.get_frame_id_for_event(df, e))
-        if frame > max_frame:
-            max_frame = frame
-    return max_frame
-
-def get_presnap_dataframe( df, start_frame, end_frame ):
-    df_ = df[ ( df[ "frameId" ] >= start_frame ) & \
-              ( df[ "frameId" ] <= end_frame ) ]
-    return df_
-
 def get_tracking_info_for_player_frame(df_presnap, player_id, frame_id):
 
     player_frame_row = df_presnap[ ( df_presnap[ "nflId" ] == player_id ) & \
@@ -193,10 +172,10 @@ def get_motion_events( df_f, df_d, df_pp, df_p ):
     start_events = [ "line_set", "man_in_motion" ]
     end_events = [ "ball_snap" ]
 
-    presnap_start = get_min_frame_from_events(df_f, start_events)
-    presnap_end = get_max_frame_from_events(df_f, end_events)
+    presnap_start = ap.get_min_frame_from_events(df_f, start_events)
+    presnap_end = ap.get_max_frame_from_events(df_f, end_events)
 
-    df_pre = get_presnap_dataframe(df_f, presnap_start, presnap_end)
+    df_pre = ap.get_presnap_dataframe(df_f, presnap_start, presnap_end)
     p_ids = get_player_ids(df_pre)
 
     l_motions = []
