@@ -14,7 +14,7 @@ ap.DATA_DIR = "data/kaggle"
 
 # Set thresholds - the player has to maintain t_speed for at least t_time
 # to qualify as a motion event
-SPEED_THRESHOLD = 0.9  # yards / sec
+SPEED_THRESHOLD = 1.6  # yards / sec
 TIME_THRESHOLD  = 0.5  # seconds (multiply * 10 for frame count)
 
 
@@ -86,38 +86,43 @@ def get_general_direction_and_offset(vector_x, vector_y, play_direction):
 
     angle_rad = math.atan2( vector_y, vector_x )
     angle_deg = math.degrees(angle_rad)
-    general_dir = ""
+
+    s_dir = ""
+    i_dir = 0
 
     if f_horizontal:
         if f_x_neg:
-            general_dir = "left"
+            s_dir = "left"
+            i_dir = 180
             if angle_deg < 0:
                 offset = 180 + angle_deg
             else:
                 offset = 180 - angle_deg
         else:
-            general_dir = "right"
+            s_dir = "right"
             offset = angle_deg
     else:
         if f_y_neg:
-            general_dir = "down"
+            s_dir = "down"
+            i_dir = -90
             offset = 90 + angle_deg
         else:
-            general_dir = "up"
+            s_dir = "up"
+            i_dir = 90
             offset = 90 - angle_deg
 
-    return (general_dir, round(offset, 4))
+    return (s_dir, i_dir, round(offset, 4))
 
 def get_motion_dir_relative_to_scrimmage(v_x, team_dir):
 
     result_val = False
-    f_relative_dir = "forward"
+    f_relative_dir = 1
 
     if (team_dir == "left") and (v_x > 0):
-        f_relative_dir = "back"
+        f_relative_dir = -1
 
     if (team_dir == "right") and (v_x < 0):
-        f_relative_dir = "back"
+        f_relative_dir = -1
 
     return f_relative_dir
 
@@ -141,7 +146,7 @@ def get_motion_event_frames_by_player(df, p_id):
 
     return l_grouped_frames
 
-def summarize_motion_event(df, l_frames, player_id, is_def):
+def summarize_motion_event(df, l_frames, player_id, los, is_def):
 
     f_start = l_frames[0]
     f_end = l_frames[-1]
@@ -158,15 +163,19 @@ def summarize_motion_event(df, l_frames, player_id, is_def):
     vector_x = round(end_row["x"].values[0] - start_row["x"].values[0], 4)
     vector_y = round(end_row["y"].values[0] - start_row["y"].values[0], 4)
 
+    abs_vector_x = abs(vector_x)
+
     final_x = round(end_row["x"].values[0], 4)
     final_y = round(end_row["y"].values[0], 4)
+
+    x_to_los = round(abs(los - final_x), 4)
 
     if is_def:
         team_dir = ap.get_opposite_dir(s_play_dir)
     else:
         team_dir = s_play_dir
 
-    motion_dir, dir_offset = get_general_direction_and_offset(vector_x, vector_y, s_play_dir)
+    s_motion_dir, i_motion_dir, dir_offset = get_general_direction_and_offset(vector_x, vector_y, s_play_dir)
     motion_dir_rel_to_scrimmage = get_motion_dir_relative_to_scrimmage(vector_x, team_dir)
 
     if abs(dir_offset) > 45:
@@ -175,15 +184,17 @@ def summarize_motion_event(df, l_frames, player_id, is_def):
     total_distance = round(math.sqrt((vector_x ** 2) + (vector_y ** 2)), 4)
     abs_speed = round(total_distance / motion_time, 4)
 
-    return [ f_start, f_end, vector_x, vector_y, final_x, final_y, motion_dir,
-             dir_offset, team_dir, motion_dir_rel_to_scrimmage, total_distance, abs_speed ]
+    return [ f_start, f_end, vector_x, vector_y, final_x, final_y, x_to_los, s_motion_dir, i_motion_dir,
+             dir_offset, team_dir, motion_dir_rel_to_scrimmage, abs_vector_x, total_distance,
+             abs_speed ]
 
 def get_motion_events( df_f, df_d, df_pp ):
 
     game_id = df_d["gameId"].values[0]
     play_id = df_d["playId"].values[0]
 
-    defense_team = df_d["defensiveTeam"].values[0]
+    defense_team  = df_d["defensiveTeam"].values[0]
+    line_of_scrimmage = df_d["absoluteYardlineNumber"].values[0]
 
     start_events = [ "line_set", "man_in_motion" ]
     end_events = [ "ball_snap" ]
@@ -212,16 +223,15 @@ def get_motion_events( df_f, df_d, df_pp ):
         t_frames = get_motion_event_frames_by_player(df_pre, p)
         for l in range(len(t_frames)):
 
-            #l_frames = t_frames[l]
-            l_stats = summarize_motion_event( df_pre, t_frames[l], p, is_defense )
+            l_stats = summarize_motion_event( df_pre, t_frames[l], p, line_of_scrimmage, is_defense )
             l_motions.append( player_stats + [ motion_idx ] + l_stats )
 
             motion_idx += 1
 
     columns = [ "gameId", "playId", "nflId", "teamAbbr", "isDefense", "motionEventId",
                 "startFrameId", "endFrameId", "vectorX", "vectorY", "finalX", "finalY",
-                "motionDir", "dirOffest", "teamDir", "motionDirRelativeToScrimmage",
-                "totalDistance", "absSpeed" ]
+                "finalXtoLos", "motionDir", "motionDirInt", "dirOffest", "teamDir",
+                "motionDirRelativeToScrimmage", "absVectorX", "totalDistance", "absSpeed" ]
 
     return pd.DataFrame( l_motions, columns=columns )
 
