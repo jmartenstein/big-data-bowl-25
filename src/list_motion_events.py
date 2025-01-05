@@ -188,7 +188,7 @@ def summarize_motion_event(df, l_frames, player_id, los, is_def):
              dir_offset, team_dir, motion_dir_rel_to_scrimmage, abs_vector_x, total_distance,
              abs_speed ]
 
-def get_motion_events( df_f, df_d, df_pp ):
+def get_motion_events( df_f, df_d, df_pp, df_p ):
 
     game_id = df_d["gameId"].values[0]
     play_id = df_d["playId"].values[0]
@@ -214,11 +214,14 @@ def get_motion_events( df_f, df_d, df_pp ):
         if math.isnan(p):
             continue
 
-        row_pp = df_pp[ df_pp[ "nflId" ] == p ]
-        team = row_pp[ "teamAbbr" ].values[0]
+        row_player_play = df_pp[ df_pp[ "nflId" ] == p ]
+        row_player      = df_p[ df_p [ "nflId" ] == p ]
+
+        position = row_player[ "position" ].values[0]
+        team = row_player_play[ "teamAbbr" ].values[0]
         is_defense = (defense_team == team)
 
-        player_stats = [ game_id, play_id, p, team, is_defense ]
+        player_stats = [ game_id, play_id, p, position, team, is_defense ]
 
         t_frames = get_motion_event_frames_by_player(df_pre, p)
         for l in range(len(t_frames)):
@@ -228,7 +231,7 @@ def get_motion_events( df_f, df_d, df_pp ):
 
             motion_idx += 1
 
-    columns = [ "gameId", "playId", "nflId", "teamAbbr", "isDefense", "motionEventId",
+    columns = [ "gameId", "playId", "nflId", "position", "teamAbbr", "isDefense", "motionEventId",
                 "startFrameId", "endFrameId", "vectorX", "vectorY", "finalX", "finalY",
                 "finalXtoLos", "motionDir", "motionDirInt", "dirOffest", "teamDir",
                 "motionDirRelativeToScrimmage", "absVectorX", "totalDistance", "absSpeed" ]
@@ -259,9 +262,11 @@ game_list = g_id.split(",")
 df_out = pd.DataFrame([])
 
 plays_file       = ap.DATA_DIR + "/plays.csv"
+players_file     = ap.DATA_DIR + "/players.csv"
 player_play_file = ap.DATA_DIR + "/player_play.csv"
 
 df_plays       = pd.read_csv(plays_file)
+df_players     = pd.read_csv(players_file)
 df_player_play = pd.read_csv(player_play_file)
 
 for g in game_list:
@@ -292,10 +297,10 @@ for g in game_list:
 
         df_play_tracking_frames = ap.filter_frames_by_play( df_game_frames, p )
         df_play_details         = ap.filter_frames_by_play( df_game_plays, p)
-        df_players_details      = ap.filter_frames_by_play( df_game_pp, p )
+        df_players_plays        = ap.filter_frames_by_play( df_game_pp, p )
 
         df_motion_events = get_motion_events( df_play_tracking_frames, df_play_details,
-                                              df_players_details )
+                                              df_players_plays, df_players )
 
         df_out = pd.concat( [ df_out, df_motion_events ] )
 
