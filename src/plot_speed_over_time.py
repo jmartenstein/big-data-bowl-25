@@ -144,7 +144,7 @@ def plot_speed_over_time( game_id, play_id ):
 
     df_f, df_d = ap.load_tracking_from_game_and_play(game_id, play_id)
 
-    motion_filename  = f"{ap.PROCESSED_DATA_DIR}/motion.2022091102.20250105.1236*"
+    motion_filename  = f"{ap.PROCESSED_DATA_DIR}/motion.2022091102.20250105.18*"
     players_filename = f"{ap.RAW_DATA_DIR}/players.csv"
 
     motion_files_found = glob.glob(motion_filename)

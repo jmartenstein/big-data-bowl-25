@@ -12,6 +12,9 @@ from operator  import itemgetter
 
 ap.DATA_DIR = "data/kaggle"
 
+ap.SPEED_THRESHOLD = 1.6
+ap.TIME_THRESHOLD = 1.0
+
 ### FUNCTIONS ###
 
 def get_motion_event_filename(game_id=''):
