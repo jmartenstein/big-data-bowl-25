@@ -31,9 +31,10 @@ def build_player_columns(df_f, df_m, col_name, p_list):
     df_players = pd.DataFrame([])
     hash_colors = {}
 
-    highlight_color = '#111111'
+    highlight_color = [ '#880000', '#008800', '#000088' ]
     default_color = '#DDDDDD'
 
+    highlight_index = 0
     for p in p_list:
 
         df_p_col = get_player_column( df_f, p, col_name )
@@ -49,7 +50,8 @@ def build_player_columns(df_f, df_m, col_name, p_list):
         if df_m_player.empty:
             hash_colors[df_p_col.columns[1]] = default_color
         else:
-            hash_colors[df_p_col.columns[1]] = highlight_color
+            hash_colors[df_p_col.columns[1]] = highlight_color[ highlight_index ]
+            highlight_index += 1
 
     df_players.set_index('frameId', inplace=True)
 
@@ -81,6 +83,21 @@ def set_subplot_details(ax, df, title, colors, set_f_id, snap_f_id, motion_f_id=
         ax.axvline(x=motion_f_id, color='gray', linestyle=':', label="Man in Motion")
     if shift_f_id > 0:
         ax.axvline(x=shift_f_id, color='gray', linestyle=':', label="Shift")
+
+    return True
+
+def set_fill_between(ax, df_f, df_m):
+
+    for i, m in df_m.iterrows():
+
+        name = m["displayName"]
+        start = m["startFrameId"]
+        end = m["endFrameId"]
+
+        x = df_f.index.values
+        y = df_f[name].values
+        ax.fill_between(x, y, where=((x>start) & (x<end)), color="#DDDDDD",
+                        alpha=0.5)
 
     return True
 
@@ -145,8 +162,6 @@ def plot_speed_over_time( game_id, play_id ):
     df_player_subset = df_players[[ "nflId", "displayName" ]]
     df_motion_merged = df_play_motion.merge( df_player_subset, on=[ "nflId" ] )
 
-    print(df_motion_merged)
-
     offense_team = df_d[ "possessionTeam" ].values[0]
     defense_team = df_d[ "defensiveTeam" ].values[0]
 
@@ -166,9 +181,15 @@ def plot_speed_over_time( game_id, play_id ):
     set_subplot_details(axes[0], df_offense, f"Offense: {offense_team}", off_color,
                         presnap_start, presnap_end)
 
+    df_offense_motion = df_motion_merged [ df_motion_merged[ "teamAbbr" ] == offense_team ]
+    set_fill_between(axes[0], df_offense, df_offense_motion)
+
     df_defense, def_color = build_team_columns(df_pre, df_motion_merged, defense_team, column)
     set_subplot_details(axes[1], df_defense, f"Defense: {defense_team}", def_color,
                         presnap_start, presnap_end)
+
+    df_defense_motion = df_motion_merged [ df_motion_merged[ "teamAbbr" ] == defense_team ]
+    set_fill_between(axes[1], df_defense, df_defense_motion)
 
     #print("Offense:")
     #summarize_speed_over_time(df_offense)
