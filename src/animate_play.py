@@ -126,6 +126,8 @@ df_full_tracking = df_tr.merge(df_plays, on=["gameId", "playId"])
 df_focused = df_full_tracking[
     (df_full_tracking["playId"] == play_id) & (df_full_tracking["gameId"] == game_id)
 ]
+print("df_focused data:")
+print(df_focused.head())
 
 # Get General Play Information
 absolute_yd_line = df_focused.absoluteYardlineNumber.values[0]
@@ -223,6 +225,8 @@ sliders_dict = {
 # Frame Info
 sorted_frame_list = df_focused.frameId.unique()
 sorted_frame_list.sort()
+
+print(f"Processing {len(sorted_frame_list)} frames")
 
 frames = []
 for frameId in sorted_frame_list:
